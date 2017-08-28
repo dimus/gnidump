@@ -18,6 +18,12 @@ func main() {
 	defer db.Close()
 }
 
+func check(err error) {
+	if err != nil {
+		panic(err)
+	}
+}
+
 func DbVars() (user, password, host, port, database string) {
 	user = os.Getenv("DB_USER")
 	password = os.Getenv("DB_PASSWORD")
@@ -32,13 +38,15 @@ func setDb() *sql.DB {
 	url := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?parseTime=true",
 		user, password, host, port, database)
 	db, err := sql.Open("mysql", url)
-	if err != nil {
-		log.Fatal(err)
-	}
+	check(err)
 	return db
 }
 
 func DumpTables(db *sql.DB) {
+	dumpTableDataSources(db)
+}
+
+func dumpTableDataSources(db *sql.DB) {
 	q := `SELECT id, title, description,
 	 	  		logo_url, web_site_url, data_url,
 	 	  		refresh_period_days, name_strings_count,
@@ -50,9 +58,7 @@ func DumpTables(db *sql.DB) {
 
 func RunQuery(db *sql.DB, q string) *sql.Rows {
 	rows, err := db.Query(q)
-	if err != nil {
-		log.Fatal(err)
-	}
+	check(err)
 	return rows
 }
 
@@ -64,8 +70,9 @@ func handleDataSource(rows *sql.Rows) {
 	var description, logo_url, web_site_url sql.NullString
 	var data_url, data_hash sql.NullString
 	var created_at, updated_at time.Time
-
-	w := csv.NewWriter(os.Stdout)
+	file := csvFile("data_sources")
+	defer file.Close()
+	w := csv.NewWriter(file)
 
 	defer rows.Close()
 
@@ -73,9 +80,7 @@ func handleDataSource(rows *sql.Rows) {
 		err := rows.Scan(&id, &title, &description, &logo_url, &web_site_url,
 			&data_url, &refresh_period_days, &name_strings_count, &data_hash,
 			&unique_names_count, &created_at, &updated_at)
-		if err != nil {
-			log.Fatal(err)
-		}
+		check(err)
 		csvRow := []string{strconv.Itoa(id), title, description.String,
 			logo_url.String, web_site_url.String, data_url.String,
 			strconv.Itoa(int(refresh_period_days.Int64)),
@@ -88,4 +93,11 @@ func handleDataSource(rows *sql.Rows) {
 		}
 	}
 	w.Flush()
+	file.Sync()
+}
+
+func csvFile(f string) *os.File {
+	file, err := os.Create("/tmp/" + f + ".csv")
+	check(err)
+	return file
 }
