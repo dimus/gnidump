@@ -2,14 +2,17 @@
 set -euo pipefail
 IFS=$'\n\t'
 
-if [[ ! ${DB_HOST:?Requires DB_HOST} \
-   || ! ${DB_USERNAME:?Requires DB_USERNAME} \
-   || ! ${DB_PASSWORD:?Requires DB_PASSWORD} ]]; then
+if [[ ! ${GNINDEX_HOST:?Requires GNINDEX_HOST} \
+   || ! ${GNINDEX_USERNAME:?Requires GNINDEX_USERNAME} \
+   || ! ${GNINDEX_PASSWORD:?Requires GNINDEX_PASSWORD} ]]; then
   exit 1
 fi
 
 dir=$(dirname ${BASH_SOURCE[0]})
 csv_dir="/tmp/gnindex_pg/"
+gni_dir="/tmp/gni_mysql/"
+
+cp ${gni_dir}data_sources.csv ${csv_dir}
 
 delete_indexes="${dir}/sql/gnindex_delete_indexes.sql"
 create_indexes="${dir}/sql/gnindex_create_indexes.sql"
@@ -29,11 +32,11 @@ declare -a tables=(
               );
 
 function sql {
-  PGPASSWORD=${DB_PASSWORD} psql -U ${DB_USERNAME} -h ${DB_HOST} -d ${db} -c $1 # -A -t
+  PGPASSWORD=${GNINDEX_PASSWORD} psql -U ${GNINDEX_USERNAME} -h ${GNINDEX_HOST} -d ${db} -c $1 # -A -t
 }
 
 function sql_file {
-  PGPASSWORD=${DB_PASSWORD} psql -U ${DB_USERNAME} -h ${DB_HOST} -d ${db} < $1 # 2> /dev/null
+  PGPASSWORD=${GNINDEX_PASSWORD} psql -U ${GNINDEX_USERNAME} -h ${GNINDEX_HOST} -d ${db} < $1 # 2> /dev/null
 }
 
 function timestamp {
@@ -50,7 +53,11 @@ do
   timestamp
   echo "Processing ${table}"
   sql "TRUNCATE TABLE ${table}"
-  sql "\COPY ${table} FROM '${csv_dir}${table}.csv' WITH (FORMAT csv, HEADER)"
+  if [[ ${table} == name_strings ]]; then
+    sql "\COPY ${table} FROM '${csv_dir}${table}.csv' WITH (FORMAT csv, HEADER, FORCE_NOT_NULL(name))"
+  else
+    sql "\COPY ${table} FROM '${csv_dir}${table}.csv' WITH (FORMAT csv, HEADER)"
+  fi
 done
 
 # Recreate indexes

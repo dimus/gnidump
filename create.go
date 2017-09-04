@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/csv"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -57,11 +58,11 @@ func exportVernaculars(ioJobs chan<- ioJob) {
 
 	fmt.Println("Export to vernacular_strings")
 	records, err := r.ReadAll()
-	check(err)
 
 	for _, v := range records {
 		vernacularID := v[0]
 		vernacularName := v[1]
+		check(err)
 		vernacularUUID := uuid.NewV5(gnNameSpace, vernacularName).String()
 		vernacularMap[vernacularID] = vernacularUUID
 		ioJobs <- ioJob{"vernacular", []string{vernacularUUID, vernacularName}}
@@ -126,20 +127,25 @@ func indexRowToIO(row []string, ioJobs chan<- ioJob, kv *badger.KV) {
 		&localID, &nomenclaturalCodeID, &rank, &acceptedTaxonID,
 		&classificationPath, &classificationPathIDs, &classificationPathRanks)
 
-	pn := parsedNameFromID(nameStringID, kv)
+	parsedName, err := parsedNameFromID(nameStringID, kv)
+	if err == nil {
+		nameStringUUID := parsedName.ID
 
-	acceptedNameUUID, acceptedName := findAcceptedName(dataSourceID,
-		acceptedTaxonID, kv)
+		acceptedNameUUID, acceptedName := findAcceptedName(dataSourceID,
+			acceptedTaxonID, kv)
 
-	if acceptedNameUUID == "" {
-		acceptedTaxonID = ""
+		if acceptedNameUUID == "" {
+			acceptedTaxonID = ""
+		}
+
+		csvRow := []string{dataSourceID, nameStringUUID, url, taxonID, globalID,
+			localID, nomenclaturalCodeID, rank, acceptedTaxonID, classificationPath,
+			classificationPathRanks, classificationPathIDs, acceptedNameUUID,
+			acceptedName}
+		ioJobs <- ioJob{"index", csvRow}
+	} else {
+		log.Println("Broken record:", dataSourceID, nameStringID, taxonID)
 	}
-
-	csvRow := []string{dataSourceID, pn.ID, url, taxonID, globalID,
-		localID, nomenclaturalCodeID, rank, acceptedTaxonID, classificationPath,
-		classificationPathRanks, classificationPathIDs, acceptedNameUUID,
-		acceptedName}
-	ioJobs <- ioJob{"index", csvRow}
 }
 
 func findAcceptedName(dataSourceID string, taxonID string,
@@ -156,7 +162,8 @@ func findAcceptedName(dataSourceID string, taxonID string,
 	if res == nil {
 		acceptedName, acceptedNameUUID = "", ""
 	} else {
-		parsedName := parsedNameFromID(string(res), kv)
+		parsedName, err := parsedNameFromID(string(res), kv)
+		check(err)
 		acceptedName = parsedName.Name
 		acceptedNameUUID = parsedName.ID
 	}
@@ -316,7 +323,8 @@ func nameStringsWorker(workerID int, nameStringsJobs <-chan [][]string,
 func processNameStringsRows(job [][]string, ioJobs chan<- ioJob,
 	kv *badger.KV) {
 	for _, row := range job {
-		pn := parsedNameFromID(row[0], kv)
+		pn, err := parsedNameFromID(row[0], kv)
+		check(err)
 		processWords(&pn, ioJobs)
 		csvRow := []string{pn.ID, pn.Name, pn.IDCanonical, pn.Canonical,
 			strconv.FormatBool(pn.Surrogate)}
@@ -324,12 +332,19 @@ func processNameStringsRows(job [][]string, ioJobs chan<- ioJob,
 	}
 }
 
-func parsedNameFromID(nameStringID string, kv *badger.KV) ParsedName {
+func parsedNameFromID(nameStringID string,
+	kv *badger.KV) (ParsedName, error) {
 	var item badger.KVItem
 	err := kv.Get([]byte(nameStringID), &item)
 	check(err)
-	record := bytes.NewBuffer(item.Value())
-	return decodeGob(*record)
+	res := item.Value()
+	if res == nil {
+		err = errors.New("Key does not exist")
+		return ParsedName{}, err
+	} else {
+		record := bytes.NewBuffer(res)
+		return decodeGob(*record), nil
+	}
 }
 
 func processWords(parsedName *ParsedName, ioJobs chan<- ioJob) {
@@ -338,7 +353,7 @@ func processWords(parsedName *ParsedName, ioJobs chan<- ioJob) {
 	name := parsedName.Name
 
 	for _, v := range pos {
-		wordUpper := strings.ToUpper(name[v.Start:v.End])
+		wordUpper := strings.ToUpper(string([]rune(name)[v.Start:v.End]))
 		word := strings.Trim(wordUpper, " ")
 		switch v.Meaning {
 		case "uninomial":

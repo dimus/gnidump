@@ -1,0 +1,5 @@
+#!/bin/bash
+
+/usr/local/bin/gnidump dump
+/usr/local/bin/gnidump convert
+/usr/local/bin/gnidump create
