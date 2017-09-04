@@ -4,6 +4,9 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/dimus/gnidump/converter"
+	"github.com/dimus/gnidump/creator"
+	dump "github.com/dimus/gnidump/dump"
 	_ "github.com/go-sql-driver/mysql"
 )
 
@@ -12,14 +15,14 @@ func main() {
 	if len(os.Args) > 1 {
 		command = os.Args[1]
 	}
-	prepare()
+	dump.Prepare()
 	switch command {
 	case "dump":
-		dumpTables()
+		dump.Tables()
 	case "convert":
-		convertTables()
+		converter.Data()
 	case "create":
-		createTables()
+		creator.Tables()
 	default:
 		help := `
 Usage:

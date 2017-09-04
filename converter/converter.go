@@ -1,4 +1,4 @@
-package main
+package converter
 
 import (
 	"bytes"
@@ -11,22 +11,26 @@ import (
 	"time"
 
 	badger "github.com/dgraph-io/badger"
+	"github.com/dimus/gnidump/util"
 	jsoniter "github.com/json-iterator/go"
 	uuid "github.com/satori/go.uuid"
 )
 
-var gnNameSpace = uuid.NewV5(uuid.NamespaceDNS, "globalnames.org")
+// NameSpace for calculating UUID v5. This namespace is formed from a
+// DNS domain name 'globalnames.org'
+var GnNameSpace = uuid.NewV5(uuid.NamespaceDNS, "globalnames.org")
 
-func convertTables() {
+// Fetches data needed for gnindex and stores it in a key-value store.
+func Data() {
 	parsingJobs := make(chan map[string]string, 100)
 	done := make(chan bool)
 
 	resetKV()
 
-	kv := initBadger()
+	kv := util.InitBadger()
 	defer kv.Close()
 
-	for i := 1; i <= workersNum(); i++ {
+	for i := 1; i <= util.WorkersNum(); i++ {
 		go parserWorker(i, parsingJobs, done, kv)
 	}
 
@@ -42,14 +46,14 @@ func convertTables() {
 
 func resetKV() {
 	log.Println("Cleaning up key value store")
-	d, err := os.Open(badgerDir)
-	check(err)
+	d, err := os.Open(util.BadgerDir)
+	util.Check(err)
 	defer d.Close()
 	names, err := d.Readdirnames(-1)
-	check(err)
+	util.Check(err)
 	for _, name := range names {
-		err = os.RemoveAll(filepath.Join(badgerDir, name))
-		check(err)
+		err = os.RemoveAll(filepath.Join(util.BadgerDir, name))
+		util.Check(err)
 	}
 }
 
@@ -67,16 +71,17 @@ func parserWorker(id int, parsingJobs <-chan map[string]string,
 	}
 }
 
-func storeParsedNames(parsedNames *[]ParsedName, kv *badger.KV) {
+func storeParsedNames(parsedNames *[]util.ParsedName, kv *badger.KV) {
 	entries := badgerize(parsedNames)
-	kv.BatchSet(entries)
+	err := kv.BatchSet(entries)
+	util.Check(err)
 }
 
-func badgerize(parsedNames *[]ParsedName) []*badger.Entry {
+func badgerize(parsedNames *[]util.ParsedName) []*badger.Entry {
 	batchSize := len(*parsedNames) * 2
 	var entries = make([]*badger.Entry, batchSize)
 	for i, v := range *parsedNames {
-		encodedParsedName := v.encodeGob()
+		encodedParsedName := v.EncodeGob()
 		e1 := badger.Entry{Key: []byte(v.ID), Value: encodedParsedName.Bytes()}
 		e2 := badger.Entry{Key: []byte(v.IDOriginal),
 			Value: encodedParsedName.Bytes()}
@@ -87,7 +92,7 @@ func badgerize(parsedNames *[]ParsedName) []*badger.Entry {
 	return entries
 }
 
-func parseNamesBatch(namesMap map[string]string) []ParsedName {
+func parseNamesBatch(namesMap map[string]string) []util.ParsedName {
 	namesArray := prepareArray(namesMap)
 	parsedNames := remoteParser(namesArray)
 	for i := range parsedNames {
@@ -108,7 +113,7 @@ func nameFromJob(job map[string]string) string {
 }
 
 func prepareJobs(parsingJobs chan<- map[string]string) {
-	records := readCSVNameStrings()
+	records := ReadCSVNameStrings()
 
 	log.Println("Getting names parsed")
 	totalSize := len(records)
@@ -123,34 +128,36 @@ func prepareJobs(parsingJobs chan<- map[string]string) {
 	close(parsingJobs)
 }
 
-func readCSVNameStrings() [][]string {
+// ReadCSVNameStrings reads all lines from gni's name_strings.csv into memory.
+func ReadCSVNameStrings() [][]string {
 	log.Println("Getting name_strings from CSV file")
-	f := gniFile("name_strings")
+	f := GniFile("name_strings")
 	r := csv.NewReader(f)
 	records, err := r.ReadAll()
-	check(err)
+	util.Check(err)
 	return records
 }
 
-func remoteParser(names []string) []ParsedName {
+func remoteParser(names []string) []util.ParsedName {
 	namesJSON, err := jsoniter.Marshal(names)
-	check(err)
+	util.Check(err)
 	namesReader := bytes.NewReader(namesJSON)
-	env := envVars()
+	env := util.EnvVars()
 	res, err := http.Post(env["parser_url"], "application/json",
 		namesReader)
-	check(err)
+	util.Check(err)
 	body, err := ioutil.ReadAll(res.Body)
-	res.Body.Close()
-	check(err)
+	err = res.Body.Close()
+	util.Check(err)
+	util.Check(err)
 	return parseJSON(body)
 }
 
-func parseJSON(json []byte) []ParsedName {
+func parseJSON(json []byte) []util.ParsedName {
 	var data map[string]interface{}
-	parsed := []ParsedName{}
+	parsed := []util.ParsedName{}
 	err := jsoniter.Unmarshal(json, &data)
-	check(err)
+	util.Check(err)
 	names := data["namesJson"].([]interface{})
 
 	for i := range names {
@@ -161,32 +168,32 @@ func parseJSON(json []byte) []ParsedName {
 	return parsed
 }
 
-func createParsedName(name map[string]interface{}) ParsedName {
+func createParsedName(name map[string]interface{}) util.ParsedName {
 	id := name["name_string_id"].(string)
 	verbatim := name["verbatim"].(string)
 	parsed := name["parsed"].(bool)
 	idCanonical, idOriginal, canonical := "", "", ""
 	surrogate := false
-	positions := []Position{}
+	positions := []util.Position{}
 	if parsed {
 		canonicalMap := name["canonical_name"].(map[string]interface{})
 		canonical = canonicalMap["value"].(string)
-		idCanonical = uuid.NewV5(gnNameSpace, canonical).String()
+		idCanonical = uuid.NewV5(GnNameSpace, canonical).String()
 		surrogate = name["surrogate"].(bool)
 		positions = createPositions(name["positions"].([]interface{}))
 	}
-	return ParsedName{id, idCanonical, idOriginal, verbatim, canonical,
+	return util.ParsedName{id, idCanonical, idOriginal, verbatim, canonical,
 		surrogate, positions}
 }
 
-func createPositions(pos []interface{}) []Position {
-	var positions []Position
+func createPositions(pos []interface{}) []util.Position {
+	var positions []util.Position
 	for i := range pos {
 		posAry := pos[i].([]interface{})
 		wordType := posAry[0].(string)
 		start := posAry[1].(float64)
 		end := posAry[2].(float64)
-		positions = append(positions, Position{wordType, int(start), int(end)})
+		positions = append(positions, util.Position{wordType, int(start), int(end)})
 	}
 	return positions
 }
@@ -209,8 +216,9 @@ func namesMap(records [][]string) map[string]string {
 	return res
 }
 
-func gniFile(f string) *os.File {
+// Returns handles to existing CSV files with gni dumps.
+func GniFile(f string) *os.File {
 	file, err := os.Open("/tmp/gni_mysql/" + f + ".csv")
-	check(err)
+	util.Check(err)
 	return file
 }

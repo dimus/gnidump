@@ -1,4 +1,4 @@
-package main
+package dump
 
 import (
 	"database/sql"
@@ -9,28 +9,36 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/dimus/gnidump/util"
 )
 
-func prepare() {
+// Sets all required directories for CSV dump from gni, badger key-value store,
+// CSV for gnindex.
+func Prepare() {
 	gniPath := "/tmp/gni_mysql"
 	gnindexPath := "/tmp/gnindex_pg"
 	badgerPath := "/tmp/badger"
 	var err error
 	if _, err := os.Stat(gniPath); os.IsNotExist(err) {
-		os.Mkdir(gniPath, 0777)
+		err := os.Mkdir(gniPath, 0777)
+		util.Check(err)
 	}
-	check(err)
+	util.Check(err)
 	if _, err := os.Stat(gnindexPath); os.IsNotExist(err) {
-		os.Mkdir(gnindexPath, 0777)
+		err := os.Mkdir(gnindexPath, 0777)
+		util.Check(err)
 	}
-	check(err)
+	util.Check(err)
 	if _, err := os.Stat(badgerPath); os.IsNotExist(err) {
-		os.Mkdir(badgerPath, 0777)
+		err := os.Mkdir(badgerPath, 0777)
+		util.Check(err)
 	}
-	check(err)
+	util.Check(err)
 }
 
-func dumpTables() {
+// Tables creates csv files from the Global Names Index data.
+func Tables() {
 	db := setDb()
 	defer db.Close()
 	dumpTableDataSources(db)
@@ -40,25 +48,12 @@ func dumpTables() {
 	dumpTableVernacularStringIndices(db)
 }
 
-func envVars() map[string]string {
-	env := make(map[string]string)
-	env["user"] = os.Getenv("DB_USER")
-	env["password"] = os.Getenv("DB_PASSWORD")
-	env["host"] = os.Getenv("DB_HOST")
-	env["port"] = os.Getenv("DB_PORT")
-	env["database"] = os.Getenv("DB_DATABASE")
-	env["workers"] = os.Getenv("WORKERS_NUMBER")
-	env["parser_url"] = os.Getenv("PARSER_URL")
-	return env
-}
-
 func setDb() *sql.DB {
-	env := envVars()
+	env := util.EnvVars()
 	url := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?parseTime=true",
 		env["user"], env["password"], env["host"], env["port"], env["database"])
-	fmt.Println(url)
 	db, err := sql.Open("mysql", url)
-	check(err)
+	util.Check(err)
 	return db
 }
 
@@ -76,17 +71,18 @@ func handleVernacularStringIndices(rows *sql.Rows) {
 	var language, locality, countryCode sql.NullString
 	file := csvFile("vernacular_string_indices")
 	defer file.Close()
+
 	w := csv.NewWriter(file)
 	err := w.Write([]string{"data_source_id", "taxon_id", "vernacular_string_id",
 		"language", "locality", "country_code"})
-	check(err)
+	util.Check(err)
 
 	defer rows.Close()
 
 	for rows.Next() {
 		err := rows.Scan(&dataSourceID, &taxonID, &vernacularStringID,
 			&language, &locality, &countryCode)
-		check(err)
+		util.Check(err)
 		csvRow := []string{dataSourceID, taxonID, vernacularStringID,
 			language.String, locality.String, countryCode.String}
 
@@ -111,13 +107,13 @@ func handleVernacularStrings(rows *sql.Rows) {
 	defer file.Close()
 	w := csv.NewWriter(file)
 	err := w.Write([]string{"id", "name"})
-	check(err)
+	util.Check(err)
 
 	defer rows.Close()
 
 	for rows.Next() {
 		err := rows.Scan(&id, &name)
-		check(err)
+		util.Check(err)
 		csvRow := []string{id, name}
 
 		if err := w.Write(csvRow); err != nil {
@@ -153,7 +149,7 @@ func handleNameStringIndices(rows *sql.Rows) {
 		"taxon_id", "global_id", "local_id", "nomenclatural_code_id", "rank",
 		"accepted_taxon_id", "classification_path", "classification_path_ids",
 		"classification_path_ranks"})
-	check(err)
+	util.Check(err)
 
 	defer rows.Close()
 
@@ -162,7 +158,7 @@ func handleNameStringIndices(rows *sql.Rows) {
 			&globalID, &localID, &nomenclaturalCodeID, &rank, &acceptedTaxonID,
 			&classificationPath, &classificationPathIDs,
 			&classificationPathRanks)
-		check(err)
+		util.Check(err)
 		csvRow := []string{dataSourceID, nameStringID, url.String, taxonID,
 			globalID.String, localID.String, nomenclaturalCodeID.String,
 			rank.String, acceptedTaxonID.String, classificationPath.String,
@@ -190,18 +186,18 @@ func handleNameStrings(rows *sql.Rows) {
 	defer file.Close()
 	w := csv.NewWriter(file)
 	err := w.Write([]string{"id", "name"})
-	check(err)
+	util.Check(err)
 
 	defer rows.Close()
 
 	for rows.Next() {
 		err := rows.Scan(&id, &name)
-		check(err)
+		util.Check(err)
 		name := strings.Replace(name, "\u0000", "", -1)
 		csvRow := []string{id, name}
 
 		err = w.Write(csvRow)
-		check(err)
+		util.Check(err)
 	}
 
 	w.Flush()
@@ -221,7 +217,7 @@ func dumpTableDataSources(db *sql.DB) {
 
 func runQuery(db *sql.DB, q string) *sql.Rows {
 	rows, err := db.Query(q)
-	check(err)
+	util.Check(err)
 	return rows
 }
 
@@ -242,7 +238,7 @@ func handleDataSource(rows *sql.Rows) {
 		"refresh_period_days", "name_strings_count",
 		"data_hash", "unique_names_count", "created_at",
 		"updated_at"})
-	check(err)
+	util.Check(err)
 
 	defer rows.Close()
 
@@ -250,7 +246,7 @@ func handleDataSource(rows *sql.Rows) {
 		err := rows.Scan(&id, &title, &description, &logoURL, &webSiteURL,
 			&dataURL, &refreshPeriodDays, &nameStringsCount, &dataHash,
 			&uniqueNamesCount, &createdAt, &updatedAt)
-		check(err)
+		util.Check(err)
 		created := createdAt.Format(time.RFC3339)
 		updated := updatedAt.Format(time.RFC3339)
 		csvRow := []string{strconv.Itoa(id), title, description.String,
@@ -260,7 +256,7 @@ func handleDataSource(rows *sql.Rows) {
 			strconv.Itoa(int(uniqueNamesCount.Int64)),
 			created, updated}
 
-		check(w.Write(csvRow))
+		util.Check(w.Write(csvRow))
 	}
 	w.Flush()
 	file.Sync()
@@ -268,6 +264,6 @@ func handleDataSource(rows *sql.Rows) {
 
 func csvFile(f string) *os.File {
 	file, err := os.Create("/tmp/gni_mysql/" + f + ".csv")
-	check(err)
+	util.Check(err)
 	return file
 }

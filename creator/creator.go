@@ -1,4 +1,4 @@
-package main
+package creator
 
 import (
 	"bytes"
@@ -14,6 +14,8 @@ import (
 	"time"
 
 	badger "github.com/dgraph-io/badger"
+	"github.com/dimus/gnidump/converter"
+	"github.com/dimus/gnidump/util"
 	uuid "github.com/satori/go.uuid"
 )
 
@@ -22,7 +24,8 @@ type ioJob struct {
 	Row    []string
 }
 
-func createTables() {
+// Tables creates CSV files for importing them to gnindex format.
+func Tables() {
 	ioJobs := make(chan ioJob)
 
 	var nameStringsWG sync.WaitGroup
@@ -32,8 +35,11 @@ func createTables() {
 	writers, files := initTables()
 	defer closeWriters(writers, files)
 
-	kv := initBadger()
-	defer kv.Close()
+	kv := util.InitBadger()
+	defer func() {
+		err := kv.Close()
+		util.Check(err)
+	}()
 
 	ioWG.Add(1)
 	go writeToCSVs(writers, ioJobs, &ioWG)
@@ -53,7 +59,7 @@ func createTables() {
 
 func exportVernaculars(ioJobs chan<- ioJob) {
 	vernacularMap := make(map[string]string)
-	f := gniFile("vernacular_strings")
+	f := converter.GniFile("vernacular_strings")
 	r := csv.NewReader(f)
 
 	fmt.Println("Export to vernacular_strings")
@@ -62,18 +68,18 @@ func exportVernaculars(ioJobs chan<- ioJob) {
 	for _, v := range records {
 		vernacularID := v[0]
 		vernacularName := v[1]
-		check(err)
-		vernacularUUID := uuid.NewV5(gnNameSpace, vernacularName).String()
+		util.Check(err)
+		vernacularUUID := uuid.NewV5(converter.GnNameSpace, vernacularName).String()
 		vernacularMap[vernacularID] = vernacularUUID
 		ioJobs <- ioJob{"vernacular", []string{vernacularUUID, vernacularName}}
 	}
 
 	fmt.Println("Export to vernacular_string_indices")
-	f2 := gniFile("vernacular_string_indices")
+	f2 := converter.GniFile("vernacular_string_indices")
 	r2 := csv.NewReader(f2)
 
 	records2, err := r2.ReadAll()
-	check(err)
+	util.Check(err)
 	var dataSourceID, taxonID, vernacularStringID, language, locality,
 		countryCode string
 	for _, v := range records2 {
@@ -90,7 +96,7 @@ func exportNameStringIndices(kv *badger.KV, ioJobs chan<- ioJob,
 	indexWG *sync.WaitGroup) {
 	indexJobs := make(chan [][]string)
 
-	for i := 1; i <= workersNum(); i++ {
+	for i := 1; i <= util.WorkersNum(); i++ {
 		indexWG.Add(1)
 		go indexWorker(i, indexJobs, ioJobs, indexWG, kv)
 	}
@@ -155,7 +161,7 @@ func findAcceptedName(dataSourceID string, taxonID string,
 	key := indexKey(dataSourceID, taxonID)
 
 	err := kv.Get(key, &item)
-	check(err)
+	util.Check(err)
 
 	res := item.Value()
 
@@ -163,7 +169,7 @@ func findAcceptedName(dataSourceID string, taxonID string,
 		acceptedName, acceptedNameUUID = "", ""
 	} else {
 		parsedName, err := parsedNameFromID(string(res), kv)
-		check(err)
+		util.Check(err)
 		acceptedName = parsedName.Name
 		acceptedNameUUID = parsedName.ID
 	}
@@ -178,13 +184,13 @@ func unpackSlice(row []string, vars ...*string) {
 
 func collectIndexJobs(indexJobs chan<- [][]string) {
 	log.Println("Export name_string_indices to CSV file")
-	f := gniFile("name_string_indices")
+	f := converter.GniFile("name_string_indices")
 	chunkSize := 10000
 	r := csv.NewReader(f)
 
 	//skip header
 	_, err := r.Read()
-	check(err)
+	util.Check(err)
 
 	i := 0
 	rows := make([][]string, chunkSize)
@@ -193,7 +199,7 @@ func collectIndexJobs(indexJobs chan<- [][]string) {
 		if err == io.EOF {
 			break
 		}
-		check(err)
+		util.Check(err)
 		if i < chunkSize {
 			rows[i] = row
 		} else {
@@ -213,7 +219,7 @@ func exportNameStrings(kv *badger.KV, ioJobs chan<- ioJob,
 	nameStringsWG *sync.WaitGroup) {
 	nameStringsJobs := make(chan [][]string)
 
-	for i := 1; i <= workersNum(); i++ {
+	for i := 1; i <= util.WorkersNum(); i++ {
 		nameStringsWG.Add(1)
 		go nameStringsWorker(i, nameStringsJobs, ioJobs, nameStringsWG, kv)
 	}
@@ -223,12 +229,12 @@ func exportNameStrings(kv *badger.KV, ioJobs chan<- ioJob,
 
 func prepareIndexData(kv *badger.KV) {
 	log.Println("Getting name_string_indices from CSV file")
-	f := gniFile("name_string_indices")
+	f := converter.GniFile("name_string_indices")
 	r := csv.NewReader(f)
 
 	//skip header
 	_, err := r.Read()
-	check(err)
+	util.Check(err)
 
 	i := 0
 	count := 0
@@ -238,7 +244,7 @@ func prepareIndexData(kv *badger.KV) {
 		if err == io.EOF {
 			break
 		}
-		check(err)
+		util.Check(err)
 		if i < 10000 {
 			rows[i] = row
 		} else {
@@ -266,7 +272,7 @@ func indexKey(dataSourceID string, taxonID string) []byte {
 func storeIndexData(rows [][]string, kv *badger.KV) {
 	entries := badgerizeIndexes(rows)
 	err := kv.BatchSet(entries)
-	check(err)
+	util.Check(err)
 }
 
 func badgerizeIndexes(rows [][]string) []*badger.Entry {
@@ -287,12 +293,12 @@ func writeToCSVs(writers map[string]*csv.Writer, ioJobs <-chan ioJob,
 	log.Println("Waiting for ioJobs")
 	for job := range ioJobs {
 		err := writers[job.Writer].Write(job.Row)
-		check(err)
+		util.Check(err)
 	}
 }
 
 func collectNameStringsJobs(nameStringsJobs chan<- [][]string) {
-	gniRecords := readCSVNameStrings()
+	gniRecords := converter.ReadCSVNameStrings()
 	totalSize := len(gniRecords)
 	chunkSize := 10000
 
@@ -324,7 +330,7 @@ func processNameStringsRows(job [][]string, ioJobs chan<- ioJob,
 	kv *badger.KV) {
 	for _, row := range job {
 		pn, err := parsedNameFromID(row[0], kv)
-		check(err)
+		util.Check(err)
 		processWords(&pn, ioJobs)
 		csvRow := []string{pn.ID, pn.Name, pn.IDCanonical, pn.Canonical,
 			strconv.FormatBool(pn.Surrogate)}
@@ -333,21 +339,21 @@ func processNameStringsRows(job [][]string, ioJobs chan<- ioJob,
 }
 
 func parsedNameFromID(nameStringID string,
-	kv *badger.KV) (ParsedName, error) {
+	kv *badger.KV) (util.ParsedName, error) {
 	var item badger.KVItem
 	err := kv.Get([]byte(nameStringID), &item)
-	check(err)
+	util.Check(err)
 	res := item.Value()
 	if res == nil {
 		err = errors.New("Key does not exist")
-		return ParsedName{}, err
+		return util.ParsedName{}, err
 	} else {
 		record := bytes.NewBuffer(res)
-		return decodeGob(*record), nil
+		return util.DecodeGob(*record), nil
 	}
 }
 
-func processWords(parsedName *ParsedName, ioJobs chan<- ioJob) {
+func processWords(parsedName *util.ParsedName, ioJobs chan<- ioJob) {
 	pos := parsedName.Positions
 	id := parsedName.ID
 	name := parsedName.Name
@@ -388,8 +394,10 @@ func closeWriters(writers map[string]*csv.Writer, files map[string]*os.File) {
 
 	for name, f := range files {
 		log.Println("Closing file", name)
-		f.Sync()
-		f.Close()
+		err := f.Sync()
+		util.Check(err)
+		err = f.Close()
+		util.Check(err)
 	}
 }
 
@@ -415,24 +423,24 @@ func initTables() (map[string]*csv.Writer, map[string]*os.File) {
 		if k == "name_strings" {
 			err := v.Write([]string{"id", "name",
 				"canonical_uuid", "canonical", "surrogate"})
-			check(err)
+			util.Check(err)
 		} else if k == "index" {
 			err := v.Write([]string{"data_source_id", "name_string_id",
 				"url,taxon_id", "global_id", "local_id", "nomenclatural_code_id",
 				"rank", "accepted_taxon_id", "classification_path",
 				"classification_path_ids", "classification_path_ranks",
 				"accepted_name_uuid", "accepted_name"})
-			check(err)
+			util.Check(err)
 		} else if k == "vernacular" {
 			err := v.Write([]string{"id", "name"})
-			check(err)
+			util.Check(err)
 		} else if k == "vernacular_index" {
 			err := v.Write([]string{"data_source_id", "taxon_id",
 				"vernacular_string_id", "language", "locality", "country_code"})
-			check(err)
+			util.Check(err)
 		} else {
 			err := v.Write([]string{k, "name_uuid"})
-			check(err)
+			util.Check(err)
 		}
 	}
 	return writers, files
@@ -440,6 +448,6 @@ func initTables() (map[string]*csv.Writer, map[string]*os.File) {
 
 func pgCsvFile(f string) *os.File {
 	file, err := os.Create("/tmp/gnindex_pg/" + f + ".csv")
-	check(err)
+	util.Check(err)
 	return file
 }
