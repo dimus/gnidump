@@ -3,6 +3,7 @@ set -euo pipefail
 IFS=$'\n\t'
 
 if [[ ! ${GNINDEX_HOST:?Requires GNINDEX_HOST} \
+   || ! ${GNINDEX_PORT:?Requires GNINDEX_PORT} \
    || ! ${GNINDEX_USERNAME:?Requires GNINDEX_USERNAME} \
    || ! ${GNINDEX_PASSWORD:?Requires GNINDEX_PASSWORD} ]]; then
   exit 1
@@ -32,11 +33,11 @@ declare -a tables=(
               );
 
 function sql {
-  PGPASSWORD=${GNINDEX_PASSWORD} psql -U ${GNINDEX_USERNAME} -h ${GNINDEX_HOST} -d ${db} -c $1 # -A -t
+  PGPASSWORD=${GNINDEX_PASSWORD} psql -U ${GNINDEX_USERNAME} -h ${GNINDEX_HOST} -p ${GNINDEX_PORT} -d ${db} -c $1 # -A -t
 }
 
 function sql_file {
-  PGPASSWORD=${GNINDEX_PASSWORD} psql -U ${GNINDEX_USERNAME} -h ${GNINDEX_HOST} -d ${db} < $1 # 2> /dev/null
+  PGPASSWORD=${GNINDEX_PASSWORD} psql -U ${GNINDEX_USERNAME} -h ${GNINDEX_HOST} -p ${GNINDEX_PORT} -d ${db} < $1 # 2> /dev/null
 }
 
 function timestamp {

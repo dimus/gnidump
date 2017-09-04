@@ -39,3 +39,39 @@ DB_DATABASE=gni
 WORKERS_NUMBER=4
 PARSER_URL="http://parser.globalnames.org/api"
 ```
+For exporting data to gnindex postgres database you need the following env
+variables:
+
+`GNINDEX_HOST`
+: Postgres host
+
+`GNINDEX_PORT`
+: Postgres port
+
+`GNINDEX_USERNAME`
+: Postgres user
+
+`GNINDEX_PASSWORD`
+: Postgres password
+
+## Usage
+
+* Compile app
+
+```bash
+go build
+```
+
+* Move binary file to `/usr/local/bin`
+
+```bash
+sudo mv gnidump /usr/local/bin
+```
+
+Go to scripts directory and run
+
+```bash
+./dump
+./restore
+```
+
