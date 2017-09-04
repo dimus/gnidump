@@ -65,7 +65,7 @@ func exportVernaculars(ioJobs chan<- ioJob) {
 	fmt.Println("Export to vernacular_strings")
 	records, err := r.ReadAll()
 
-	for _, v := range records {
+	for _, v := range records[1:] {
 		vernacularID := v[0]
 		vernacularName := v[1]
 		util.Check(err)
@@ -82,7 +82,7 @@ func exportVernaculars(ioJobs chan<- ioJob) {
 	util.Check(err)
 	var dataSourceID, taxonID, vernacularStringID, language, locality,
 		countryCode string
-	for _, v := range records2 {
+	for _, v := range records2[1:] {
 		unpackSlice(v, &dataSourceID, &taxonID, &vernacularStringID, &language,
 			&locality, &countryCode)
 		vernacularStringID = vernacularMap[vernacularStringID]
