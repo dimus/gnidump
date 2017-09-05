@@ -1,0 +1,101 @@
+{
+	"comment": "",
+	"ignore": "test",
+	"package": [
+		{
+			"path": "appengine/cloudsql",
+			"revision": ""
+		},
+		{
+			"checksumSHA1": "+Bo3QheGAtKFk7QPb+pdIEZNiYI=",
+			"path": "github.com/AndreasBriese/bbloom",
+			"revision": "28f7e881ca57bc00e028f9ede9f0d9104cfeef5e",
+			"revisionTime": "2017-07-02T08:40:17Z"
+		},
+		{
+			"checksumSHA1": "/00U7l7wAwKg1d73mvYL84oJpAU=",
+			"path": "github.com/dgraph-io/badger",
+			"revision": "f407625a0c1316423c0a3dd6d68b9bbbee504ea2",
+			"revisionTime": "2017-09-05T01:28:57Z"
+		},
+		{
+			"checksumSHA1": "FB7rDZgiLfpIGi9RqWbgxjZ0Vjg=",
+			"path": "github.com/dgraph-io/badger/protos",
+			"revision": "f407625a0c1316423c0a3dd6d68b9bbbee504ea2",
+			"revisionTime": "2017-09-05T01:28:57Z"
+		},
+		{
+			"checksumSHA1": "DqFosafuhUYdRhCpNRAe57ph4ms=",
+			"path": "github.com/dgraph-io/badger/skl",
+			"revision": "f407625a0c1316423c0a3dd6d68b9bbbee504ea2",
+			"revisionTime": "2017-09-05T01:28:57Z"
+		},
+		{
+			"checksumSHA1": "RVcU54uHQoApQUkWYKd8dTxSsb8=",
+			"path": "github.com/dgraph-io/badger/table",
+			"revision": "f407625a0c1316423c0a3dd6d68b9bbbee504ea2",
+			"revisionTime": "2017-09-05T01:28:57Z"
+		},
+		{
+			"checksumSHA1": "Hh1XYhKkiFCGfMg63aHeKG4Toj8=",
+			"path": "github.com/dgraph-io/badger/y",
+			"revision": "f407625a0c1316423c0a3dd6d68b9bbbee504ea2",
+			"revisionTime": "2017-09-05T01:28:57Z"
+		},
+		{
+			"checksumSHA1": "N5D1aYGZh5OUVArhFW0voidER3A=",
+			"path": "github.com/go-sql-driver/mysql",
+			"revision": "26471af196a17ee75a22e6481b5a5897fb16b081",
+			"revisionTime": "2017-08-22T21:48:09Z"
+		},
+		{
+			"checksumSHA1": "yqF125xVSkmfLpIVGrLlfE05IUk=",
+			"path": "github.com/golang/protobuf/proto",
+			"revision": "17ce1425424ab154092bbb43af630bd647f3bb0d",
+			"revisionTime": "2017-09-02T00:04:52Z"
+		},
+		{
+			"checksumSHA1": "JrtpVNR0h1MEjZAovZ2mzMNyLeE=",
+			"path": "github.com/json-iterator/go",
+			"revision": "db32ee8c2dc860c0f647d7c7e55f9ad91952dc35",
+			"revisionTime": "2017-09-05T05:00:03Z"
+		},
+		{
+			"checksumSHA1": "rJab1YdNhQooDiBWNnt7TLWPyBU=",
+			"path": "github.com/pkg/errors",
+			"revision": "c605e284fe17294bda444b34710735b29d1a9d90",
+			"revisionTime": "2017-05-05T04:36:39Z"
+		},
+		{
+			"checksumSHA1": "zmC8/3V4ls53DJlNTKDZwPSC/dA=",
+			"path": "github.com/satori/go.uuid",
+			"revision": "5bf94b69c6b68ee1b541973bb8e1144db23a194b",
+			"revisionTime": "2017-03-21T23:07:31Z"
+		},
+		{
+			"checksumSHA1": "dr5+PfIRzXeN+l1VG+s0lea9qz8=",
+			"path": "golang.org/x/net/context",
+			"revision": "66aacef3dd8a676686c7ae3716979581e8b03c47",
+			"revisionTime": "2016-09-14T00:11:54Z"
+		},
+		{
+			"checksumSHA1": "UxahDzW2v4mf/+aFxruuupaoIwo=",
+			"path": "golang.org/x/net/internal/timeseries",
+			"revision": "66aacef3dd8a676686c7ae3716979581e8b03c47",
+			"revisionTime": "2016-09-14T00:11:54Z"
+		},
+		{
+			"checksumSHA1": "u/r66lwYfgg682u5hZG7/E7+VCY=",
+			"path": "golang.org/x/net/trace",
+			"revision": "66aacef3dd8a676686c7ae3716979581e8b03c47",
+			"revisionTime": "2016-09-14T00:11:54Z"
+		},
+		{
+			"checksumSHA1": "6Yh/sh2D/OyNxKqPVs8alWUhTms=",
+			"path": "golang.org/x/sys/unix",
+			"revision": "7ddbeae9ae08c6a06a59597f0c9edbc5ff2444ce",
+			"revisionTime": "2017-09-01T16:16:44Z"
+		}
+	],
+	"rootPath": "github.com/dimus/gnidump"
+}
