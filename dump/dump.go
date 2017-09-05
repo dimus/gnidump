@@ -1,3 +1,5 @@
+// Package `gnidump/dump` accesses gni database and extracts information that
+// needs to be converted into /tmp/gni_mysql/*.csv files.
 package dump
 
 import (

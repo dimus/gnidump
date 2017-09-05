@@ -1,3 +1,6 @@
+// Pakcage `gnidump/creator` reads CSV files from gni project and writes
+// modified information into CSV files compatible with gnindex PostgreSQL
+// database.
 package creator
 
 import (

@@ -1,3 +1,5 @@
+// Package /gnidump/converter parses name-strings from gni-generated CSV files
+// and stores this information into	`badger` key-value store
 package converter
 
 import (
@@ -42,6 +44,23 @@ func Data() {
 	// some processing going.
 	log.Println("Tearing down...")
 	time.Sleep(5 * time.Second)
+}
+
+// ReadCSVNameStrings reads all lines from gni's name_strings.csv into memory.
+func ReadCSVNameStrings() [][]string {
+	log.Println("Getting name_strings from CSV file")
+	f := GniFile("name_strings")
+	r := csv.NewReader(f)
+	records, err := r.ReadAll()
+	util.Check(err)
+	return records
+}
+
+// Returns handles to existing CSV files with gni dumps.
+func GniFile(f string) *os.File {
+	file, err := os.Open("/tmp/gni_mysql/" + f + ".csv")
+	util.Check(err)
+	return file
 }
 
 func resetKV() {
@@ -128,16 +147,6 @@ func prepareJobs(parsingJobs chan<- map[string]string) {
 	close(parsingJobs)
 }
 
-// ReadCSVNameStrings reads all lines from gni's name_strings.csv into memory.
-func ReadCSVNameStrings() [][]string {
-	log.Println("Getting name_strings from CSV file")
-	f := GniFile("name_strings")
-	r := csv.NewReader(f)
-	records, err := r.ReadAll()
-	util.Check(err)
-	return records
-}
-
 func remoteParser(names []string) []util.ParsedName {
 	namesJSON, err := jsoniter.Marshal(names)
 	util.Check(err)
@@ -214,11 +223,4 @@ func namesMap(records [][]string) map[string]string {
 		res[record[1]] = record[0]
 	}
 	return res
-}
-
-// Returns handles to existing CSV files with gni dumps.
-func GniFile(f string) *os.File {
-	file, err := os.Open("/tmp/gni_mysql/" + f + ".csv")
-	util.Check(err)
-	return file
 }

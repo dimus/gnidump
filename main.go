@@ -1,3 +1,5 @@
+// Application `gnidump` takes data from MySQL database of `gni`, and converts
+// the data into format required by `gnindex`.
 package main
 
 import (
