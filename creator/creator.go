@@ -4,6 +4,7 @@
 package creator
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/csv"
 	"errors"
@@ -27,13 +28,20 @@ type ioJob struct {
 	Row    []string
 }
 
+type canJob struct {
+	Canonical    string
+	DataSourceID int
+}
+
 // Tables creates CSV files for importing them to gnindex format.
 func Tables() {
 	ioJobs := make(chan ioJob)
+	canonicalJobs := make(chan canJob)
 
 	var nameStringsWG sync.WaitGroup
 	var indexWG sync.WaitGroup
 	var ioWG sync.WaitGroup
+	var canonicalWG sync.WaitGroup
 
 	writers, files := initTables()
 	defer closeWriters(writers, files)
@@ -47,17 +55,71 @@ func Tables() {
 	ioWG.Add(1)
 	go writeToCSVs(writers, ioJobs, &ioWG)
 
+	canonicalWG.Add(1)
+	go collectCanonical(canonicalJobs, &canonicalWG)
+
 	exportNameStrings(kv, ioJobs, &nameStringsWG)
 	prepareIndexData(kv)
 	nameStringsWG.Wait()
 
-	exportNameStringIndices(kv, ioJobs, &indexWG)
+	exportNameStringIndices(kv, ioJobs, canonicalJobs, &indexWG)
 	indexWG.Wait()
 
 	exportVernaculars(ioJobs)
 
 	close(ioJobs)
+	close(canonicalJobs)
 	ioWG.Wait()
+	canonicalWG.Wait()
+}
+
+func collectCanonical(canonicalJobs <-chan canJob,
+	canonicalWG *sync.WaitGroup) {
+	defer canonicalWG.Done()
+
+	canonicals := make(map[string]map[int]struct{})
+	for c := range canonicalJobs {
+		if _, ok := canonicals[c.Canonical]; ok {
+			canonicals[c.Canonical][c.DataSourceID] = struct{}{}
+		} else {
+			ds := make(map[int]struct{})
+			ds[c.DataSourceID] = struct{}{}
+			canonicals[c.Canonical] = ds
+		}
+	}
+
+	saveCanonicals(canonicals)
+}
+
+func saveCanonicals(canonicals map[string]map[int]struct{}) {
+	log.Println("Writing canonicals to files")
+	f1 := txtFile("canonical")
+	f2 := txtFile("canonical_data_sources")
+	canonicalWriter := bufio.NewWriter(f1)
+	canDataSourceWriter := bufio.NewWriter(f2)
+
+	for can, ids := range canonicals {
+		_, err := canonicalWriter.WriteString(can + "\n")
+		util.Check(err)
+		for k, _ := range ids {
+			idString := strconv.Itoa(k)
+			_, err = canDataSourceWriter.WriteString(can + "\t" + idString + "\n")
+			util.Check(err)
+		}
+	}
+
+	err := canonicalWriter.Flush()
+	util.Check(err)
+	err = canDataSourceWriter.Flush()
+	util.Check(err)
+	err = f1.Sync()
+	util.Check(err)
+	err = f2.Sync()
+	util.Check(err)
+	err = f1.Close()
+	util.Check(err)
+	err = f2.Close()
+	util.Check(err)
 }
 
 func exportVernaculars(ioJobs chan<- ioJob) {
@@ -96,41 +158,44 @@ func exportVernaculars(ioJobs chan<- ioJob) {
 }
 
 func exportNameStringIndices(kv *badger.KV, ioJobs chan<- ioJob,
-	indexWG *sync.WaitGroup) {
+	canonicalJobs chan<- canJob, indexWG *sync.WaitGroup) {
 	indexJobs := make(chan [][]string)
 
 	for i := 1; i <= util.WorkersNum(); i++ {
 		indexWG.Add(1)
-		go indexWorker(i, indexJobs, ioJobs, indexWG, kv)
+		go indexWorker(i, indexJobs, ioJobs, canonicalJobs, indexWG, kv)
 	}
 
 	go collectIndexJobs(indexJobs)
 }
 
 func indexWorker(workerID int, indexJobs <-chan [][]string, ioJobs chan<- ioJob,
-	indexWG *sync.WaitGroup, kv *badger.KV) {
+	canonicalJobs chan<- canJob, indexWG *sync.WaitGroup, kv *badger.KV) {
 	defer indexWG.Done()
 	for {
 		job, more := <-indexJobs
 		if more {
 			log.Printf("NSIndex export %d: %s", workerID, job[0][0:2])
-			exportIndexRows(job, ioJobs, kv)
+			exportIndexRows(job, ioJobs, canonicalJobs, kv)
 		} else {
 			return
 		}
 	}
 }
 
-func exportIndexRows(job [][]string, ioJobs chan<- ioJob, kv *badger.KV) {
+func exportIndexRows(job [][]string, ioJobs chan<- ioJob,
+	canonicalJobs chan<- canJob, kv *badger.KV) {
 	for _, row := range job {
-		indexRowToIO(row, ioJobs, kv)
+		indexRowToIO(row, ioJobs, canonicalJobs, kv)
 	}
 }
 
-func indexRowToIO(row []string, ioJobs chan<- ioJob, kv *badger.KV) {
+func indexRowToIO(row []string, ioJobs chan<- ioJob,
+	canonicalJobs chan<- canJob, kv *badger.KV) {
 	var dataSourceID, nameStringID, url, taxonID, globalID, localID,
 		nomenclaturalCodeID, rank, acceptedTaxonID, classificationPath,
-		classificationPathIDs, classificationPathRanks string
+		classificationPathIDs, classificationPathRanks, acceptedNameUUID,
+		acceptedName string
 
 	unpackSlice(row, &dataSourceID, &nameStringID, &url, &taxonID, &globalID,
 		&localID, &nomenclaturalCodeID, &rank, &acceptedTaxonID,
@@ -140,11 +205,19 @@ func indexRowToIO(row []string, ioJobs chan<- ioJob, kv *badger.KV) {
 	if err == nil {
 		nameStringUUID := parsedName.ID
 
-		acceptedNameUUID, acceptedName := findAcceptedName(dataSourceID,
-			acceptedTaxonID, kv)
+		dsID, err := strconv.Atoi(dataSourceID)
+		util.Check(err)
+		canonicalJobs <- canJob{parsedName.Canonical, dsID}
 
-		if acceptedNameUUID == "" {
-			acceptedTaxonID = ""
+		if taxonID == acceptedTaxonID {
+			acceptedTaxonID, acceptedNameUUID, acceptedName = "", "", ""
+		} else {
+			acceptedNameUUID, acceptedName = findAcceptedName(dataSourceID,
+				acceptedTaxonID, kv)
+
+			if acceptedNameUUID == "" {
+				acceptedTaxonID = ""
+			}
 		}
 
 		csvRow := []string{dataSourceID, nameStringUUID, url, taxonID, globalID,
@@ -450,7 +523,13 @@ func initTables() (map[string]*csv.Writer, map[string]*os.File) {
 }
 
 func pgCsvFile(f string) *os.File {
-	file, err := os.Create("/tmp/gnindex_pg/" + f + ".csv")
+	file, err := os.Create(util.GnindexDir + f + ".csv")
+	util.Check(err)
+	return file
+}
+
+func txtFile(f string) *os.File {
+	file, err := os.Create(util.GnindexDir + f + ".txt")
 	util.Check(err)
 	return file
 }

@@ -58,7 +58,7 @@ func ReadCSVNameStrings() [][]string {
 
 // Returns handles to existing CSV files with gni dumps.
 func GniFile(f string) *os.File {
-	file, err := os.Open("/tmp/gni_mysql/" + f + ".csv")
+	file, err := os.Open(util.GniDir + f + ".csv")
 	util.Check(err)
 	return file
 }

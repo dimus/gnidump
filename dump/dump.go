@@ -18,22 +18,19 @@ import (
 // Sets all required directories for CSV dump from gni, badger key-value store,
 // CSV for gnindex.
 func Prepare() {
-	gniPath := "/tmp/gni_mysql"
-	gnindexPath := "/tmp/gnindex_pg"
-	badgerPath := "/tmp/badger"
 	var err error
-	if _, err := os.Stat(gniPath); os.IsNotExist(err) {
-		err := os.Mkdir(gniPath, 0777)
+	if _, err := os.Stat(util.GniDir); os.IsNotExist(err) {
+		err := os.Mkdir(util.GniDir, 0777)
 		util.Check(err)
 	}
 	util.Check(err)
-	if _, err := os.Stat(gnindexPath); os.IsNotExist(err) {
-		err := os.Mkdir(gnindexPath, 0777)
+	if _, err := os.Stat(util.GnindexDir); os.IsNotExist(err) {
+		err := os.Mkdir(util.GnindexDir, 0777)
 		util.Check(err)
 	}
 	util.Check(err)
-	if _, err := os.Stat(badgerPath); os.IsNotExist(err) {
-		err := os.Mkdir(badgerPath, 0777)
+	if _, err := os.Stat(util.BadgerDir); os.IsNotExist(err) {
+		err := os.Mkdir(util.BadgerDir, 0777)
 		util.Check(err)
 	}
 	util.Check(err)
@@ -265,7 +262,7 @@ func handleDataSource(rows *sql.Rows) {
 }
 
 func csvFile(f string) *os.File {
-	file, err := os.Create("/tmp/gni_mysql/" + f + ".csv")
+	file, err := os.Create(util.GniDir + f + ".csv")
 	util.Check(err)
 	return file
 }

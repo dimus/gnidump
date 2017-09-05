@@ -11,7 +11,11 @@ import (
 )
 
 // BudgerDir is a direcotry to the badger key-value store.
-const BadgerDir string = "/tmp/badger"
+const (
+	BadgerDir  = "/tmp/badger/"
+	GniDir     = "/tmp/gni_mysql/"
+	GnindexDir = "/tmp/gnindex_pg/"
+)
 
 // Position describes semantic meaning of a word that appears between
 // the start and end positions.
