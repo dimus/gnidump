@@ -54,7 +54,7 @@ do
   timestamp
   echo "Processing ${table}"
   sql "TRUNCATE TABLE ${table}"
-  if [[ ${table} == name_strings ]]; then
+  if [[ ${table} == name_strings || ${table} == vernacular_strings ]]; then
     sql "\COPY ${table} FROM '${csv_dir}${table}.csv' WITH (FORMAT csv, HEADER, FORCE_NOT_NULL(name))"
   else
     sql "\COPY ${table} FROM '${csv_dir}${table}.csv' WITH (FORMAT csv, HEADER)"
