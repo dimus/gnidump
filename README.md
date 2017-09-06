@@ -55,7 +55,9 @@ variables:
 : Postgres password
 
 `CANONICAL_DIR`
-: Directory where to put text files with canonical names ## Usage
+: Directory where to put text files with canonical names. It should and with '/'
+
+## Usage
 
 * Compile app
 

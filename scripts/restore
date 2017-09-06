@@ -68,5 +68,10 @@ sql_file ${create_indexes}
 timestamp
 
 echo "Copy files with canonical names"
-cp ${csv_dir}canonical* ${CANONICAL_DIR}
+for name in $(ls ${csv_dir}canonical*)
+do
+  filename=$(basename $name)
+  echo ${filename}
+  sort ${name} > ${CANONICAL_DIR}${filename}
+done
 timestamp
