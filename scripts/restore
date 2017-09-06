@@ -5,6 +5,7 @@ IFS=$'\n\t'
 if [[ ! ${GNINDEX_HOST:?Requires GNINDEX_HOST} \
    || ! ${GNINDEX_PORT:?Requires GNINDEX_PORT} \
    || ! ${GNINDEX_USERNAME:?Requires GNINDEX_USERNAME} \
+   || ! ${CANONICAL_DIR:?Requires CANONICAL_DIR} \
    || ! ${GNINDEX_PASSWORD:?Requires GNINDEX_PASSWORD} ]]; then
   exit 1
 fi
@@ -64,4 +65,8 @@ done
 # Recreate indexes
 timestamp
 sql_file ${create_indexes}
+timestamp
+
+echo "Copy files with canonical names"
+cp ${csv_dir}canonical* ${CANONICAL_DIR}
 timestamp

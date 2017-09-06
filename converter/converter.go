@@ -9,7 +9,6 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"path/filepath"
 	"time"
 
 	badger "github.com/dgraph-io/badger"
@@ -65,15 +64,7 @@ func GniFile(f string) *os.File {
 
 func resetKV() {
 	log.Println("Cleaning up key value store")
-	d, err := os.Open(util.BadgerDir)
-	util.Check(err)
-	defer d.Close()
-	names, err := d.Readdirnames(-1)
-	util.Check(err)
-	for _, name := range names {
-		err = os.RemoveAll(filepath.Join(util.BadgerDir, name))
-		util.Check(err)
-	}
+	util.CleanDir(util.BadgerDir)
 }
 
 func parserWorker(id int, parsingJobs <-chan map[string]string,

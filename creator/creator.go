@@ -91,10 +91,15 @@ func collectCanonical(canonicalJobs <-chan canJob,
 	saveCanonicals(canonicals)
 }
 
+func dateStr() string {
+	t := time.Now()
+	return fmt.Sprintf("%d%02d%02d", t.Year(), t.Month(), t.Day())
+}
+
 func saveCanonicals(canonicals map[string]map[int]struct{}) {
 	log.Println("Writing canonicals to files")
-	f1 := txtFile("canonical")
-	f2 := txtFile("canonical_data_sources")
+	f1 := txtFile("canonical_names_" + dateStr())
+	f2 := txtFile("canonical_names_with_datasource_" + dateStr())
 	canonicalWriter := bufio.NewWriter(f1)
 	canDataSourceWriter := bufio.NewWriter(f2)
 
@@ -209,16 +214,8 @@ func indexRowToIO(row []string, ioJobs chan<- ioJob,
 		util.Check(err)
 		canonicalJobs <- canJob{parsedName.Canonical, dsID}
 
-		if taxonID == acceptedTaxonID {
-			acceptedTaxonID, acceptedNameUUID, acceptedName = "", "", ""
-		} else {
-			acceptedNameUUID, acceptedName = findAcceptedName(dataSourceID,
-				acceptedTaxonID, kv)
-
-			if acceptedNameUUID == "" {
-				acceptedTaxonID = ""
-			}
-		}
+		acceptedTaxonID, acceptedNameUUID, acceptedName = assignAccepted(taxonID,
+			acceptedTaxonID, classificationPathIDs, dataSourceID, kv)
 
 		csvRow := []string{dataSourceID, nameStringUUID, url, taxonID, globalID,
 			localID, nomenclaturalCodeID, rank, acceptedTaxonID, classificationPath,
@@ -227,6 +224,38 @@ func indexRowToIO(row []string, ioJobs chan<- ioJob,
 		ioJobs <- ioJob{"index", csvRow}
 	} else {
 		log.Println("Broken record:", dataSourceID, nameStringID, taxonID)
+	}
+}
+
+func assignAccepted(taxonID string, acceptedTaxonID string,
+	classificationPathIDs string, dataSourceID string,
+	kv *badger.KV) (string, string, string) {
+	var acceptedName, acceptedNameUUID string
+
+	if acceptedTaxonID == "" {
+		acceptedTaxonID = lastPathID(classificationPathIDs, taxonID)
+	}
+
+	if taxonID == acceptedTaxonID {
+		acceptedTaxonID, acceptedNameUUID, acceptedName = "", "", ""
+	} else {
+		acceptedNameUUID, acceptedName = findAcceptedName(dataSourceID,
+			acceptedTaxonID, kv)
+
+		if acceptedNameUUID == "" {
+			acceptedTaxonID = ""
+		}
+	}
+	return acceptedTaxonID, acceptedNameUUID, acceptedName
+}
+
+func lastPathID(PathIDs string, taxonID string) string {
+	xs := strings.Split(PathIDs, "|")
+	x := xs[len(xs)-1]
+	if x == "" {
+		return taxonID
+	} else {
+		return x
 	}
 }
 
@@ -478,6 +507,7 @@ func closeWriters(writers map[string]*csv.Writer, files map[string]*os.File) {
 }
 
 func initTables() (map[string]*csv.Writer, map[string]*os.File) {
+	util.CleanDir(util.GnindexDir)
 	var files = map[string]*os.File{
 		"name_strings":     pgCsvFile("name_strings"),
 		"author_word":      pgCsvFile("name_strings__author_words"),

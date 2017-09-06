@@ -54,7 +54,8 @@ variables:
 `GNINDEX_PASSWORD`
 : Postgres password
 
-## Usage
+`CANONICAL_DIR`
+: Directory where to put text files with canonical names ## Usage
 
 * Compile app
 

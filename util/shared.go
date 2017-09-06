@@ -5,6 +5,7 @@ import (
 	"encoding/gob"
 	"log"
 	"os"
+	"path/filepath"
 	"strconv"
 
 	badger "github.com/dgraph-io/badger"
@@ -95,4 +96,18 @@ func EnvVars() map[string]string {
 	env["workers"] = os.Getenv("WORKERS_NUMBER")
 	env["parser_url"] = os.Getenv("PARSER_URL")
 	return env
+}
+
+// Removes all files from a directory
+func CleanDir(dir string) {
+	d, err := os.Open(dir)
+	Check(err)
+	defer d.Close()
+
+	names, err := d.Readdirnames(-1)
+	Check(err)
+	for _, name := range names {
+		err = os.RemoveAll(filepath.Join(dir, name))
+		Check(err)
+	}
 }

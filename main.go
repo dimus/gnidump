@@ -8,8 +8,7 @@ import (
 
 	"github.com/dimus/gnidump/converter"
 	"github.com/dimus/gnidump/creator"
-	dump "github.com/dimus/gnidump/dump"
-	_ "github.com/go-sql-driver/mysql"
+	"github.com/dimus/gnidump/dump"
 )
 
 func main() {
