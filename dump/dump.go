@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/dimus/gnidump/util"
+	_ "github.com/go-sql-driver/mysql"
 )
 
 // Sets all required directories for CSV dump from gni, badger key-value store,

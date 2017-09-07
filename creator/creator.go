@@ -104,12 +104,14 @@ func saveCanonicals(canonicals map[string]map[int]struct{}) {
 	canDataSourceWriter := bufio.NewWriter(f2)
 
 	for can, ids := range canonicals {
-		_, err := canonicalWriter.WriteString(can + "\n")
-		util.Check(err)
-		for k, _ := range ids {
-			idString := strconv.Itoa(k)
-			_, err = canDataSourceWriter.WriteString(can + "\t" + idString + "\n")
+		if can != "" {
+			_, err := canonicalWriter.WriteString(can + "\n")
 			util.Check(err)
+			for k, _ := range ids {
+				idString := strconv.Itoa(k)
+				_, err = canDataSourceWriter.WriteString(can + "\t" + idString + "\n")
+				util.Check(err)
+			}
 		}
 	}
 
