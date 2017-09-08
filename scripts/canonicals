@@ -8,7 +8,8 @@ fi
 
 csv_dir="/tmp/gnindex_pg/"
 
-timestamp
+echo Time: $(date +"%H:%M:%S")
+
 echo "Copy files with canonical names"
 for name in $(ls ${csv_dir}canonical*)
 do
@@ -16,4 +17,5 @@ do
   echo ${filename}
   sort ${name} > ${CANONICAL_DIR}${filename}
 done
-timestamp
+
+echo Time: $(date +"%H:%M:%S")
