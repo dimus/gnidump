@@ -159,7 +159,8 @@ func handleNameStringIndices(rows *sql.Rows) {
 			&classificationPath, &classificationPathIDs,
 			&classificationPathRanks)
 		util.Check(err)
-		csvRow := []string{dataSourceID, nameStringID, url.String, taxonID,
+		urlString := removeNewLines(url)
+		csvRow := []string{dataSourceID, nameStringID, urlString, taxonID,
 			globalID.String, localID.String, nomenclaturalCodeID.String,
 			rank.String, acceptedTaxonID.String, classificationPath.String,
 			classificationPathIDs.String, classificationPathRanks.String}
@@ -170,6 +171,11 @@ func handleNameStringIndices(rows *sql.Rows) {
 	}
 	w.Flush()
 	file.Sync()
+}
+
+func removeNewLines(data sql.NullString) string {
+	str := data.String
+	return strings.Replace(str, "\n", "", -1)
 }
 
 func dumpTableNameStrings(db *sql.DB) {
