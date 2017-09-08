@@ -1,5 +1,3 @@
 #!/bin/bash
 
-/usr/local/bin/gnidump dump
-/usr/local/bin/gnidump convert
-/usr/local/bin/gnidump create
+time bash -c "/usr/local/bin/gnidump dump && /usr/local/bin/gnidump convert && /usr/local/bin/gnidump create"

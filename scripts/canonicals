@@ -1,0 +1,19 @@
+#!/bin/bash
+set -euo pipefail
+IFS=$'\n\t'
+
+if [[ ! ${CANONICAL_DIR:?Requires CANONICAL_DIR} ]]; then
+  exit 1
+fi
+
+csv_dir="/tmp/gnindex_pg/"
+
+timestamp
+echo "Copy files with canonical names"
+for name in $(ls ${csv_dir}canonical*)
+do
+  filename=$(basename $name)
+  echo ${filename}
+  sort ${name} > ${CANONICAL_DIR}${filename}
+done
+timestamp
