@@ -440,7 +440,7 @@ func processNameStringsRows(job [][]string, ioJobs chan<- ioJob,
 		util.Check(err)
 		processWords(&pn, ioJobs)
 		csvRow := []string{pn.ID, pn.Name, pn.IDCanonical, pn.Canonical,
-			strconv.FormatBool(pn.Surrogate)}
+			strconv.FormatBool(pn.Surrogate), pn.CanonicalWithRank}
 		ioJobs <- ioJob{"name_strings", csvRow}
 	}
 }
@@ -530,7 +530,7 @@ func initTables() (map[string]*csv.Writer, map[string]*os.File) {
 	for k, v := range writers {
 		if k == "name_strings" {
 			err := v.Write([]string{"id", "name",
-				"canonical_uuid", "canonical", "surrogate"})
+				"canonical_uuid", "canonical", "surrogate", "canonical_ranked"})
 			util.Check(err)
 		} else if k == "index" {
 			err := v.Write([]string{"data_source_id", "name_string_id",
