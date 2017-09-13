@@ -29,13 +29,14 @@ type Position struct {
 // ParsedName is a collection of all necessary information from the
 // scientific name parser.
 type ParsedName struct {
-	ID          string
-	IDCanonical string
-	IDOriginal  string
-	Name        string
-	Canonical   string
-	Surrogate   bool
-	Positions   []Position
+	ID                string
+	IDCanonical       string
+	IDOriginal        string
+	Name              string
+	Canonical         string
+	CanonicalWithRank string
+	Surrogate         bool
+	Positions         []Position
 }
 
 // ParsedName.EncodeGob is a method for serlializing ParsedName value.
