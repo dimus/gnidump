@@ -64,6 +64,12 @@ variables:
 ```bash
 go build
 ```
+to compile with build time and git hash use
+
+```
+go build -ldflags "-X main.buildstamp=`date -u '+%Y-%m-%d_%I:%M:%S%p'` \
+  -X main.githash=`git rev-parse HEAD | cut -c1-7`"
+```
 
 * Move binary file to `/usr/local/bin`
 
@@ -78,3 +84,4 @@ Go to scripts directory and run
 ./restore
 ```
 
+To see version run `gnidump version`
