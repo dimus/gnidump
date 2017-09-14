@@ -11,6 +11,9 @@ import (
 	"github.com/dimus/gnidump/dump"
 )
 
+var githash = "n/a"
+var buildstamp = "n/a"
+
 func main() {
 	command := ""
 	if len(os.Args) > 1 {
@@ -18,6 +21,9 @@ func main() {
 	}
 	dump.Prepare()
 	switch command {
+	case "version":
+		fmt.Printf(" Git commit hash: %s\n UTC Build Time: %s\n\n",
+			githash, buildstamp)
 	case "dump":
 		dump.Tables()
 	case "convert":

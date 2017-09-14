@@ -44,24 +44,34 @@ function timestamp {
   echo Time: $(date +"%H:%M:%S")
 }
 
-# Remove indexes
-timestamp
-sql_file ${delete_indexes}
-
-# Import data
-for table in ${tables[@]}
-do
+function update_db {
+  # Remove indexes
   timestamp
-  echo "Processing ${table}"
-  sql "TRUNCATE TABLE ${table}"
-  if [[ ${table} == name_strings || ${table} == vernacular_strings ]]; then
-    sql "\COPY ${table} FROM '${csv_dir}${table}.csv' WITH (FORMAT csv, HEADER, FORCE_NOT_NULL(name))"
-  else
-    sql "\COPY ${table} FROM '${csv_dir}${table}.csv' WITH (FORMAT csv, HEADER)"
-  fi
-done
+  sql_file ${delete_indexes}
 
-# Recreate indexes
-timestamp
-sql_file ${create_indexes}
-timestamp
+  # Import data
+  for table in ${tables[@]}
+  do
+    timestamp
+    echo "Processing ${table}"
+    sql "TRUNCATE TABLE ${table}"
+    if [[ ${table} == name_strings || ${table} == vernacular_strings ]]; then
+      sql "\COPY ${table} FROM '${csv_dir}${table}.csv' WITH (FORMAT csv, HEADER, FORCE_NOT_NULL(name))"
+    else
+      sql "\COPY ${table} FROM '${csv_dir}${table}.csv' WITH (FORMAT csv, HEADER)"
+    fi
+  done
+
+  # Recreate indexes
+  timestamp
+  sql_file ${create_indexes}
+  timestamp
+}
+
+read -p "You are about to update DB on ${GNINDEX_HOST}. Are you sure? (Y/y)" -n 1 -r
+echo    # (optional) move to a new line
+if [[ $REPLY =~ ^[Yy]$ ]]
+then
+  update_db
+fi
+

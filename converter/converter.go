@@ -172,18 +172,22 @@ func createParsedName(name map[string]interface{}) util.ParsedName {
 	id := name["name_string_id"].(string)
 	verbatim := name["verbatim"].(string)
 	parsed := name["parsed"].(bool)
-	idCanonical, idOriginal, canonical := "", "", ""
+	idCanonical, idOriginal, canonical, canonicalWithRank := "", "", "", ""
 	surrogate := false
 	positions := []util.Position{}
 	if parsed {
 		canonicalMap := name["canonical_name"].(map[string]interface{})
 		canonical = canonicalMap["value"].(string)
+		extended := canonicalMap["extended"]
+		if extended != nil {
+			canonicalWithRank = extended.(string)
+		}
 		idCanonical = uuid.NewV5(GnNameSpace, canonical).String()
 		surrogate = name["surrogate"].(bool)
 		positions = createPositions(name["positions"].([]interface{}))
 	}
 	return util.ParsedName{id, idCanonical, idOriginal, verbatim, canonical,
-		surrogate, positions}
+		canonicalWithRank, surrogate, positions}
 }
 
 func createPositions(pos []interface{}) []util.Position {
