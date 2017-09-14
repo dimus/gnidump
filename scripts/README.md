@@ -1,5 +1,4 @@
-# Conversion scritps for migrating data from gni MySQL database to
-  gnindex Postgres database
+# Conversion scripts for migrating data from gni MySQL database to gnindex Postgres database
 
 dump
 : Takes names from MySQL database and forms CSV files for `restore` script

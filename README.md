@@ -55,7 +55,7 @@ variables:
 : Postgres password
 
 `CANONICAL_DIR`
-: Directory where to put text files with canonical names. It should and with '/'
+: Directory where to put text files with canonical names. It should end with '/'
 
 ## Usage
 
