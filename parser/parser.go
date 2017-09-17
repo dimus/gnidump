@@ -1,3 +1,5 @@
+// Package parser helps to convert JSON respresentation of gnparser output
+// into util.ParsedName structures.
 package parser
 
 import (
@@ -5,10 +7,12 @@ import (
 	jsoniter "github.com/json-iterator/go"
 )
 
-type ParserOuptput struct {
+// Output represents root of JSON payload.
+type Output struct {
 	Results []ParsedJSON `json:"namesJson"`
 }
 
+// ParsedJSON collects converion from JSON to an intermediary structure.
 type ParsedJSON struct {
 	ID        string         `json:"name_string_id"`
 	Name      string         `json:"verbatim"`
@@ -18,28 +22,34 @@ type ParsedJSON struct {
 	Positions []PositionJSON `json:"positions"`
 }
 
+// Canonical contains canonical names
 type Canonical struct {
 	Canonical         string `json:"value"`
 	CanonicalWithRank string `json:"extended"`
 }
 
+// PositionJSON is an array representation of Position data from JSON.
 type PositionJSON [3]interface{}
 
+// Meaning returns semantic meaning of a word.
 func (p *PositionJSON) Meaning() string {
 	wt := p[0].(string)
 	return wt
 }
 
+// Start returns first letter of a word.
 func (p *PositionJSON) Start() int {
 	return int(p[1].(float64))
 }
 
+// End returns last letter of a word.
 func (p *PositionJSON) End() int {
 	return int(p[2].(float64))
 }
 
+// ParsedNamesFromJSON returns a slice of util.ParsedName structures
 func ParsedNamesFromJSON(parserOutput []byte) []util.ParsedName {
-	var res ParserOuptput
+	var res Output
 	err := jsoniter.Unmarshal(parserOutput, &res)
 	util.Check(err)
 	return parsedNames(res.Results)

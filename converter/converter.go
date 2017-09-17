@@ -1,4 +1,4 @@
-// Package /gnidump/converter parses name-strings from gni-generated CSV files
+// Package converter parses name-strings from gni-generated CSV files
 // and stores this information into	`badger` key-value store
 package converter
 
@@ -9,7 +9,7 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"time"
+	"sync"
 
 	badger "github.com/dgraph-io/badger"
 	"github.com/dimus/gnidump/parser"
@@ -17,10 +17,10 @@ import (
 	jsoniter "github.com/json-iterator/go"
 )
 
-// Fetches data needed for gnindex and stores it in a key-value store.
+// Data fetches data needed for gnindex and stores it in a key-value store.
 func Data() {
 	parsingJobs := make(chan map[string]string, 100)
-	done := make(chan bool)
+	var wg sync.WaitGroup
 
 	resetKV()
 
@@ -28,17 +28,13 @@ func Data() {
 	defer kv.Close()
 
 	for i := 1; i <= util.WorkersNum(); i++ {
-		go parserWorker(i, parsingJobs, done, kv)
+		wg.Add(1)
+		go parserWorker(i, parsingJobs, &wg, kv)
 	}
 
 	go prepareJobs(parsingJobs)
 
-	<-done
-	// Give time to workers to finish last changes. When `done` channel
-	// gets a value from one worker, other workers might still have some
-	// some processing going.
-	log.Println("Tearing down...")
-	time.Sleep(5 * time.Second)
+	wg.Wait()
 }
 
 // ReadCSVNameStrings reads all lines from gni's name_strings.csv into memory.
@@ -51,7 +47,7 @@ func ReadCSVNameStrings() [][]string {
 	return records
 }
 
-// Returns handles to existing CSV files with gni dumps.
+// GniFile returns handles to existing CSV files with gni dumps.
 func GniFile(f string) *os.File {
 	file, err := os.Open(util.GniDir + f + ".csv")
 	util.Check(err)
@@ -64,14 +60,14 @@ func resetKV() {
 }
 
 func parserWorker(id int, parsingJobs <-chan map[string]string,
-	done chan<- bool, kv *badger.KV) {
+	wg *sync.WaitGroup, kv *badger.KV) {
+	defer wg.Done()
 	for {
 		j, more := <-parsingJobs
 		if more {
 			parsedNames := parseNamesBatch(j)
 			storeParsedNames(&parsedNames, kv)
 		} else {
-			done <- true
 			return
 		}
 	}
