@@ -20,7 +20,6 @@ import (
 	badger "github.com/dgraph-io/badger"
 	"github.com/dimus/gnidump/converter"
 	"github.com/dimus/gnidump/util"
-	uuid "github.com/satori/go.uuid"
 )
 
 type ioJob struct {
@@ -141,7 +140,7 @@ func exportVernaculars(ioJobs chan<- ioJob) {
 		vernacularID := v[0]
 		vernacularName := v[1]
 		util.Check(err)
-		vernacularUUID := uuid.NewV5(converter.GnNameSpace, vernacularName).String()
+		vernacularUUID := util.ToUUID(vernacularName)
 		vernacularMap[vernacularID] = vernacularUUID
 		ioJobs <- ioJob{"vernacular", []string{vernacularUUID, vernacularName}}
 	}

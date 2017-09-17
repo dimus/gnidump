@@ -9,7 +9,12 @@ import (
 	"strconv"
 
 	badger "github.com/dgraph-io/badger"
+	uuid "github.com/satori/go.uuid"
 )
+
+// NameSpace for calculating UUID v5. This namespace is formed from a
+// DNS domain name 'globalnames.org'
+var GnNameSpace = uuid.NewV5(uuid.NamespaceDNS, "globalnames.org")
 
 // BudgerDir is a direcotry to the badger key-value store.
 const (
@@ -99,7 +104,7 @@ func EnvVars() map[string]string {
 	return env
 }
 
-// Removes all files from a directory
+// CleanDir removes all files from a directory.
 func CleanDir(dir string) {
 	d, err := os.Open(dir)
 	Check(err)
@@ -111,4 +116,10 @@ func CleanDir(dir string) {
 		err = os.RemoveAll(filepath.Join(dir, name))
 		Check(err)
 	}
+}
+
+// ToUUID takes a string and converts it into a string representation
+// of UUID v5.
+func ToUUID(s string) string {
+	return uuid.NewV5(GnNameSpace, s).String()
 }

@@ -12,14 +12,10 @@ import (
 	"time"
 
 	badger "github.com/dgraph-io/badger"
+	"github.com/dimus/gnidump/parser"
 	"github.com/dimus/gnidump/util"
 	jsoniter "github.com/json-iterator/go"
-	uuid "github.com/satori/go.uuid"
 )
-
-// NameSpace for calculating UUID v5. This namespace is formed from a
-// DNS domain name 'globalnames.org'
-var GnNameSpace = uuid.NewV5(uuid.NamespaceDNS, "globalnames.org")
 
 // Fetches data needed for gnindex and stores it in a key-value store.
 func Data() {
@@ -150,56 +146,7 @@ func remoteParser(names []string) []util.ParsedName {
 	err = res.Body.Close()
 	util.Check(err)
 	util.Check(err)
-	return parseJSON(body)
-}
-
-func parseJSON(json []byte) []util.ParsedName {
-	var data map[string]interface{}
-	parsed := []util.ParsedName{}
-	err := jsoniter.Unmarshal(json, &data)
-	util.Check(err)
-	names := data["namesJson"].([]interface{})
-
-	for i := range names {
-		name := names[i].(map[string]interface{})
-		parsedName := createParsedName(name)
-		parsed = append(parsed, parsedName)
-	}
-	return parsed
-}
-
-func createParsedName(name map[string]interface{}) util.ParsedName {
-	id := name["name_string_id"].(string)
-	verbatim := name["verbatim"].(string)
-	parsed := name["parsed"].(bool)
-	idCanonical, idOriginal, canonical, canonicalWithRank := "", "", "", ""
-	surrogate := false
-	positions := []util.Position{}
-	if parsed {
-		canonicalMap := name["canonical_name"].(map[string]interface{})
-		canonical = canonicalMap["value"].(string)
-		extended := canonicalMap["extended"]
-		if extended != nil {
-			canonicalWithRank = extended.(string)
-		}
-		idCanonical = uuid.NewV5(GnNameSpace, canonical).String()
-		surrogate = name["surrogate"].(bool)
-		positions = createPositions(name["positions"].([]interface{}))
-	}
-	return util.ParsedName{id, idCanonical, idOriginal, verbatim, canonical,
-		canonicalWithRank, surrogate, positions}
-}
-
-func createPositions(pos []interface{}) []util.Position {
-	var positions []util.Position
-	for i := range pos {
-		posAry := pos[i].([]interface{})
-		wordType := posAry[0].(string)
-		start := posAry[1].(float64)
-		end := posAry[2].(float64)
-		positions = append(positions, util.Position{wordType, int(start), int(end)})
-	}
-	return positions
+	return parser.ParsedNamesFromJSON(body)
 }
 
 func prepareArray(m map[string]string) []string {

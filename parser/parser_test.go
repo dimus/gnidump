@@ -1,4 +1,4 @@
-package converter
+package parser
 
 import (
 	"reflect"
@@ -42,25 +42,25 @@ func TestParseJson(t *testing.T) {
 		"authorship":{"value":"Meisn.",
 		"basionym_authorship":{"authors":["Meisn."]}}}]}],"bacteria":false}]}`)
 
-	noParseRes := parseJSON(noParse)
-	noParseExpect := util.ParsedName{"7fffcdf1-2162-5aa3-a506-0b844283de22", "",
-		"", "noparse", "", "", false, []util.Position{}}
+	noParseRes := ParsedNamesFromJSON(noParse)
+	noParseExpect := util.ParsedName{ID: "7fffcdf1-2162-5aa3-a506-0b844283de22",
+		Name: "noparse", Surrogate: false}
+
 	if !reflect.DeepEqual(noParseRes[0], noParseExpect) {
 		t.Error("Wrong result for ", noParseRes)
 	}
 
-	canonicalRes := parseJSON(canonical)
+	canonicalRes := ParsedNamesFromJSON(canonical)
 	canonicalExpect := util.ParsedName{
-		"16f235a0-e4a3-529c-9b83-bd15fe722110",
-		"16f235a0-e4a3-529c-9b83-bd15fe722110",
-		"",
-		"Homo sapiens", "Homo sapiens", "", false,
-		[]util.Position{{"genus", 0, 4}, {"specific_epithet", 5, 12}}}
+		ID:          "16f235a0-e4a3-529c-9b83-bd15fe722110",
+		IDCanonical: "16f235a0-e4a3-529c-9b83-bd15fe722110",
+		Name:        "Homo sapiens", Canonical: "Homo sapiens", Surrogate: false,
+		Positions: []util.Position{{"genus", 0, 4}, {"specific_epithet", 5, 12}}}
 	if !reflect.DeepEqual(canonicalRes[0], canonicalExpect) {
 		t.Error("Wrong result for ", canonicalRes)
 	}
 
-	rankedCanonicalRes := parseJSON(rankedCanonical)
+	rankedCanonicalRes := ParsedNamesFromJSON(rankedCanonical)
 	rankedCanonicalExpect := util.ParsedName{
 		"ada76998-a975-59a8-b809-46778c876ab2",
 		"076fb804-631d-505a-b8ef-332fba9f0c43",
