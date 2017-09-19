@@ -12,7 +12,7 @@ type Output struct {
 	Results []ParsedJSON `json:"namesJson"`
 }
 
-// ParsedJSON collects converion from JSON to an intermediary structure.
+// ParsedJSON collects conversion from JSON to an intermediary structure.
 type ParsedJSON struct {
 	ID        string         `json:"name_string_id"`
 	Name      string         `json:"verbatim"`
