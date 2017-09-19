@@ -220,7 +220,7 @@ func indexRowToIO(row []string, ioJobs chan<- ioJob,
 
 		csvRow := []string{dataSourceID, nameStringUUID, url, taxonID, globalID,
 			localID, nomenclaturalCodeID, rank, acceptedTaxonID, classificationPath,
-			classificationPathRanks, classificationPathIDs, acceptedNameUUID,
+			classificationPathIDs, classificationPathRanks, acceptedNameUUID,
 			acceptedName}
 		ioJobs <- ioJob{"index", csvRow}
 	} else {
