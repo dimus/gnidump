@@ -40,12 +40,16 @@ func Prepare() {
 // Tables creates csv files from the Global Names Index data.
 func Tables() {
 	db := setDb()
-	defer db.Close()
+
+	updateDataSourcesDate(db)
 	dumpTableDataSources(db)
 	dumpTableNameStrings(db)
 	dumpTableNameStringIndices(db)
 	dumpTableVernacularStrings(db)
 	dumpTableVernacularStringIndices(db)
+
+	err := db.Close()
+	util.Check(err)
 }
 
 func setDb() *sql.DB {
@@ -55,6 +59,30 @@ func setDb() *sql.DB {
 	db, err := sql.Open("mysql", url)
 	util.Check(err)
 	return db
+}
+
+func updateDataSourcesDate(db *sql.DB) {
+	var id int
+	update := `UPDATE data_sources 
+							SET updated_at = (
+								SELECT updated_at 
+								  FROM name_string_indices
+									  WHERE data_source_id = %d LIMIT 1
+								)
+							WHERE id = %d`
+	q := `SELECT DISTINCT id
+	        FROM data_sources ds 
+					  JOIN name_string_indices nsi
+						  ON nsi.data_source_id = ds.id`
+	rows := runQuery(db, q)
+	for rows.Next() {
+		err := rows.Scan(&id)
+		util.Check(err)
+		uq := fmt.Sprintf(update, id, id)
+		runQuery(db, uq)
+	}
+	err := rows.Close()
+	util.Check(err)
 }
 
 func dumpTableVernacularStringIndices(db *sql.DB) {
