@@ -237,7 +237,7 @@ DROP INDEX ns_year__gin_index;
 -- Name: unique_schema_migrations; Type: INDEX; Schema: public; Owner: postgres
 --
 
-DROP UNIQUE INDEX unique_schema_migrations;
+DROP INDEX unique_schema_migrations;
 
 
 --
