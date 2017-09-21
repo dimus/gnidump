@@ -66,6 +66,13 @@ CREATE INDEX index_name_string_indices_on_data_source_id ON name_string_indices 
 
 
 --
+-- Name: index_name_string_indices_on_data_source_id_and_taxon_id; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX index_name_string_indices_on_data_source_id_and_taxon_id ON name_string_indices USING btree (data_source_id, taxon_id);
+
+
+--
 -- Name: index_name_string_indices_on_name_string_id; Type: INDEX; Schema: public; Owner: postgres
 --
 
@@ -80,10 +87,31 @@ CREATE INDEX index_name_strings__author_words_on_author_word ON name_strings__au
 
 
 --
+-- Name: index_name_strings__author_words_on_name_uuid; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX index_name_strings__author_words_on_name_uuid ON name_strings__author_words USING btree (name_uuid);
+
+
+--
 -- Name: index_name_strings__genus_on_genus; Type: INDEX; Schema: public; Owner: postgres
 --
 
 CREATE INDEX index_name_strings__genus_on_genus ON name_strings__genus USING btree (genus);
+
+
+--
+-- Name: index_name_strings__genus_on_name_uuid; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX index_name_strings__genus_on_name_uuid ON name_strings__genus USING btree (name_uuid);
+
+
+--
+-- Name: index_name_strings__species_on_name_uuid; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX index_name_strings__species_on_name_uuid ON name_strings__species USING btree (name_uuid);
 
 
 --
@@ -94,6 +122,13 @@ CREATE INDEX index_name_strings__species_on_species ON name_strings__species USI
 
 
 --
+-- Name: index_name_strings__subspecies_on_name_uuid; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX index_name_strings__subspecies_on_name_uuid ON name_strings__subspecies USING btree (name_uuid);
+
+
+--
 -- Name: index_name_strings__subspecies_on_subspecies; Type: INDEX; Schema: public; Owner: postgres
 --
 
@@ -101,10 +136,24 @@ CREATE INDEX index_name_strings__subspecies_on_subspecies ON name_strings__subsp
 
 
 --
+-- Name: index_name_strings__uninomial_on_name_uuid; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX index_name_strings__uninomial_on_name_uuid ON name_strings__uninomial USING btree (name_uuid);
+
+
+--
 -- Name: index_name_strings__uninomial_on_uninomial; Type: INDEX; Schema: public; Owner: postgres
 --
 
 CREATE INDEX index_name_strings__uninomial_on_uninomial ON name_strings__uninomial USING btree (uninomial);
+
+
+--
+-- Name: index_name_strings__year_on_name_uuid; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX index_name_strings__year_on_name_uuid ON name_strings__year USING btree (name_uuid);
 
 
 --
@@ -126,6 +175,62 @@ CREATE INDEX index_name_strings_on_canonical_uuid ON name_strings USING btree (c
 --
 
 CREATE INDEX name_string_indices__datasource_taxonid ON name_string_indices USING btree (data_source_id, taxon_id);
+
+
+--
+-- Name: namestrings_canonical__gin_index; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX namestrings_canonical__gin_index ON name_strings USING gin (canonical gin_trgm_ops);
+
+
+--
+-- Name: namestrings_name__gin_index; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX namestrings_name__gin_index ON name_strings USING gin (name gin_trgm_ops);
+
+
+--
+-- Name: ns_author_words__gin_index; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX ns_author_words__gin_index ON name_strings__author_words USING gin (author_word gin_trgm_ops);
+
+
+--
+-- Name: ns_genus__gin_index; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX ns_genus__gin_index ON name_strings__genus USING gin (genus gin_trgm_ops);
+
+
+--
+-- Name: ns_species__gin_index; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX ns_species__gin_index ON name_strings__species USING gin (species gin_trgm_ops);
+
+
+--
+-- Name: ns_subspecies__gin_index; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX ns_subspecies__gin_index ON name_strings__subspecies USING gin (subspecies gin_trgm_ops);
+
+
+--
+-- Name: ns_uninomial__gin_index; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX ns_uninomial__gin_index ON name_strings__uninomial USING gin (uninomial gin_trgm_ops);
+
+
+--
+-- Name: ns_year__gin_index; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX ns_year__gin_index ON name_strings__year USING gin (year gin_trgm_ops);
 
 
 --

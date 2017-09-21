@@ -47,7 +47,7 @@ func (p *PositionJSON) End() int {
 	return int(p[2].(float64))
 }
 
-// ParsedNamesFromJSON returns a slice of util.ParsedName structures
+// ParsedNamesFromJSON returns a slice of util.ParsedName structures.
 func ParsedNamesFromJSON(parserOutput []byte) []util.ParsedName {
 	var res Output
 	err := jsoniter.Unmarshal(parserOutput, &res)

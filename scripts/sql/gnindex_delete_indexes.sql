@@ -66,6 +66,13 @@ DROP INDEX index_name_string_indices_on_data_source_id;
 
 
 --
+-- Name: index_name_string_indices_on_data_source_id_and_taxon_id; Type: INDEX; Schema: public; Owner: postgres
+--
+
+DROP INDEX index_name_string_indices_on_data_source_id_and_taxon_id;
+
+
+--
 -- Name: index_name_string_indices_on_name_string_id; Type: INDEX; Schema: public; Owner: postgres
 --
 
@@ -80,10 +87,31 @@ DROP INDEX index_name_strings__author_words_on_author_word;
 
 
 --
+-- Name: index_name_strings__author_words_on_name_uuid; Type: INDEX; Schema: public; Owner: postgres
+--
+
+DROP INDEX index_name_strings__author_words_on_name_uuid;
+
+
+--
 -- Name: index_name_strings__genus_on_genus; Type: INDEX; Schema: public; Owner: postgres
 --
 
 DROP INDEX index_name_strings__genus_on_genus;
+
+
+--
+-- Name: index_name_strings__genus_on_name_uuid; Type: INDEX; Schema: public; Owner: postgres
+--
+
+DROP INDEX index_name_strings__genus_on_name_uuid;
+
+
+--
+-- Name: index_name_strings__species_on_name_uuid; Type: INDEX; Schema: public; Owner: postgres
+--
+
+DROP INDEX index_name_strings__species_on_name_uuid;
 
 
 --
@@ -94,6 +122,13 @@ DROP INDEX index_name_strings__species_on_species;
 
 
 --
+-- Name: index_name_strings__subspecies_on_name_uuid; Type: INDEX; Schema: public; Owner: postgres
+--
+
+DROP INDEX index_name_strings__subspecies_on_name_uuid;
+
+
+--
 -- Name: index_name_strings__subspecies_on_subspecies; Type: INDEX; Schema: public; Owner: postgres
 --
 
@@ -101,10 +136,24 @@ DROP INDEX index_name_strings__subspecies_on_subspecies;
 
 
 --
+-- Name: index_name_strings__uninomial_on_name_uuid; Type: INDEX; Schema: public; Owner: postgres
+--
+
+DROP INDEX index_name_strings__uninomial_on_name_uuid;
+
+
+--
 -- Name: index_name_strings__uninomial_on_uninomial; Type: INDEX; Schema: public; Owner: postgres
 --
 
 DROP INDEX index_name_strings__uninomial_on_uninomial;
+
+
+--
+-- Name: index_name_strings__year_on_name_uuid; Type: INDEX; Schema: public; Owner: postgres
+--
+
+DROP INDEX index_name_strings__year_on_name_uuid;
 
 
 --
@@ -129,10 +178,66 @@ DROP INDEX name_string_indices__datasource_taxonid;
 
 
 --
+-- Name: namestrings_canonical__gin_index; Type: INDEX; Schema: public; Owner: postgres
+--
+
+DROP INDEX namestrings_canonical__gin_index;
+
+
+--
+-- Name: namestrings_name__gin_index; Type: INDEX; Schema: public; Owner: postgres
+--
+
+DROP INDEX namestrings_name__gin_index;
+
+
+--
+-- Name: ns_author_words__gin_index; Type: INDEX; Schema: public; Owner: postgres
+--
+
+DROP INDEX ns_author_words__gin_index;
+
+
+--
+-- Name: ns_genus__gin_index; Type: INDEX; Schema: public; Owner: postgres
+--
+
+DROP INDEX ns_genus__gin_index;
+
+
+--
+-- Name: ns_species__gin_index; Type: INDEX; Schema: public; Owner: postgres
+--
+
+DROP INDEX ns_species__gin_index;
+
+
+--
+-- Name: ns_subspecies__gin_index; Type: INDEX; Schema: public; Owner: postgres
+--
+
+DROP INDEX ns_subspecies__gin_index;
+
+
+--
+-- Name: ns_uninomial__gin_index; Type: INDEX; Schema: public; Owner: postgres
+--
+
+DROP INDEX ns_uninomial__gin_index;
+
+
+--
+-- Name: ns_year__gin_index; Type: INDEX; Schema: public; Owner: postgres
+--
+
+DROP INDEX ns_year__gin_index;
+
+
+--
 -- Name: unique_schema_migrations; Type: INDEX; Schema: public; Owner: postgres
 --
 
-DROP  INDEX unique_schema_migrations;
+DROP UNIQUE INDEX unique_schema_migrations;
 
 
 --
