@@ -240,13 +240,17 @@ func handleNameStrings(rows *sql.Rows) {
 
 func dumpTableDataSources(db *sql.DB) {
 	log.Print("Create data_sources.csv")
-	q := `SELECT id, title, description,
+	q1 := `SELECT id, title, description,
 	 	  		logo_url, web_site_url, data_url,
 	 	  		refresh_period_days, name_strings_count,
-	 	  		data_hash, unique_names_count, created_at,
-	 	  		updated_at
+	 	  		data_hash, unique_names_count, created_at, updated_at
 	 	  	FROM data_sources`
-	handleDataSource(runQuery(db, q))
+	q2 := `SELECT data_source_id, count(*)
+	          FROM name_string_indices
+						  GROUP BY data_source_id`
+	rows := runQuery(db, q1)
+	recNum := collectDataSourceRecords(runQuery(db, q2))
+	handleDataSource(rows, recNum)
 }
 
 func runQuery(db *sql.DB, q string) *sql.Rows {
@@ -255,7 +259,37 @@ func runQuery(db *sql.DB, q string) *sql.Rows {
 	return rows
 }
 
-func handleDataSource(rows *sql.Rows) {
+func collectDataSourceRecords(rows *sql.Rows) map[int]int {
+	res := make(map[int]int)
+	var id, recNum int
+	defer rows.Close()
+	for rows.Next() {
+		err := rows.Scan(&id, &recNum)
+		util.Check(err)
+		res[id] = recNum
+	}
+	return res
+}
+
+func qualityMaps() (map[int]byte, map[int]byte) {
+	curatedAry := []int{1, 2, 3, 4, 5, 6, 8, 9, 105, 132, 151, 155, 158,
+		163, 165, 167, 172, 173, 174, 175, 180}
+	autoCuratedAry := []int{11, 170, 179}
+
+	curated := make(map[int]byte)
+	autoCurated := make(map[int]byte)
+
+	for _, v := range curatedAry {
+		curated[v] = '\x00'
+	}
+
+	for _, v := range autoCuratedAry {
+		autoCurated[v] = '\x00'
+	}
+	return curated, autoCurated
+}
+
+func handleDataSource(rows *sql.Rows, recNum map[int]int) {
 	var id int
 	var title string
 	var refreshPeriodDays, nameStringsCount sql.NullInt64
@@ -263,6 +297,7 @@ func handleDataSource(rows *sql.Rows) {
 	var description, logoURL, webSiteURL sql.NullString
 	var dataURL, dataHash sql.NullString
 	var createdAt, updatedAt time.Time
+	curated, autoCurated := qualityMaps()
 	file := csvFile("data_sources")
 	defer file.Close()
 	w := csv.NewWriter(file)
@@ -271,7 +306,7 @@ func handleDataSource(rows *sql.Rows) {
 		"logo_url", "web_site_url", "data_url",
 		"refresh_period_days", "name_strings_count",
 		"data_hash", "unique_names_count", "created_at",
-		"updated_at"})
+		"updated_at, data_qualilty, record_count"})
 	util.Check(err)
 
 	defer rows.Close()
@@ -288,12 +323,24 @@ func handleDataSource(rows *sql.Rows) {
 			strconv.Itoa(int(refreshPeriodDays.Int64)),
 			strconv.Itoa(int(nameStringsCount.Int64)), dataHash.String,
 			strconv.Itoa(int(uniqueNamesCount.Int64)),
-			created, updated}
+			created, updated, quality(id, curated, autoCurated),
+			strconv.Itoa(recNum[id])}
 
 		util.Check(w.Write(csvRow))
 	}
 	w.Flush()
 	file.Sync()
+}
+
+func quality(id int, curated map[int]byte, autoCurated map[int]byte) string {
+	quality := 0
+	if _, ok := curated[id]; ok {
+		quality += 3
+	}
+	if _, ok := autoCurated[id]; ok {
+		quality += 12
+	}
+	return strconv.Itoa(quality)
 }
 
 func csvFile(f string) *os.File {
