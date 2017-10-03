@@ -273,7 +273,7 @@ func collectDataSourceRecords(rows *sql.Rows) map[int]int {
 
 func qualityMaps() (map[int]byte, map[int]byte) {
 	curatedAry := []int{1, 2, 3, 4, 5, 6, 8, 9, 105, 132, 151, 155, 158,
-		163, 165, 167, 172, 173, 174, 175, 180}
+		163, 165, 167, 172, 173, 174, 175, 176, 177, 181}
 	autoCuratedAry := []int{11, 170, 179}
 
 	curated := make(map[int]byte)
@@ -340,7 +340,7 @@ func quality(id int, curated map[int]byte, autoCurated map[int]byte) string {
 	if _, ok := autoCurated[id]; ok {
 		quality += 12
 	}
-	return strconv.Itoa(quality)
+	return fmt.Sprintf("%0.4b", quality)
 }
 
 func csvFile(f string) *os.File {
