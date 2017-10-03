@@ -306,7 +306,7 @@ func handleDataSource(rows *sql.Rows, recNum map[int]int) {
 		"logo_url", "web_site_url", "data_url",
 		"refresh_period_days", "name_strings_count",
 		"data_hash", "unique_names_count", "created_at",
-		"updated_at, data_qualilty, record_count"})
+		"updated_at", "data_qualilty", "record_count"})
 	util.Check(err)
 
 	defer rows.Close()
