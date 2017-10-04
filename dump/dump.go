@@ -306,7 +306,7 @@ func handleDataSource(rows *sql.Rows, recNum map[int]int) {
 		"logo_url", "web_site_url", "data_url",
 		"refresh_period_days", "name_strings_count",
 		"data_hash", "unique_names_count", "created_at",
-		"updated_at", "data_qualilty", "record_count"})
+		"updated_at", "is_curated", "is_auto_curated", "record_count"})
 	util.Check(err)
 
 	defer rows.Close()
@@ -318,29 +318,26 @@ func handleDataSource(rows *sql.Rows, recNum map[int]int) {
 		util.Check(err)
 		created := createdAt.Format(time.RFC3339)
 		updated := updatedAt.Format(time.RFC3339)
+		isCurated := "f"
+		isAutoCurated := "f"
+		if _, ok := curated[id]; ok {
+			isCurated = "t"
+		}
+		if _, ok := autoCurated[id]; ok {
+			isAutoCurated = "t"
+		}
 		csvRow := []string{strconv.Itoa(id), title, description.String,
 			logoURL.String, webSiteURL.String, dataURL.String,
 			strconv.Itoa(int(refreshPeriodDays.Int64)),
 			strconv.Itoa(int(nameStringsCount.Int64)), dataHash.String,
 			strconv.Itoa(int(uniqueNamesCount.Int64)),
-			created, updated, quality(id, curated, autoCurated),
+			created, updated, isCurated, isAutoCurated,
 			strconv.Itoa(recNum[id])}
 
 		util.Check(w.Write(csvRow))
 	}
 	w.Flush()
 	file.Sync()
-}
-
-func quality(id int, curated map[int]byte, autoCurated map[int]byte) string {
-	quality := 0
-	if _, ok := curated[id]; ok {
-		quality += 3
-	}
-	if _, ok := autoCurated[id]; ok {
-		quality += 12
-	}
-	return fmt.Sprintf("%0.4b", quality)
 }
 
 func csvFile(f string) *os.File {
