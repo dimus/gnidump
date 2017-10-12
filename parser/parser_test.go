@@ -19,8 +19,8 @@ func TestParseJson(t *testing.T) {
 		"normalized":"Homo sapiens","virus":false,
 		"positions":[["genus",0,4],["specific_epithet",5,12]],
 		"name_string_id":"16f235a0-e4a3-529c-9b83-bd15fe722110",
-		"canonical_name":{"value":"Homo sapiens"},"hybrid":false,
-		"details":[{"genus":{"value":"Homo"},
+		"canonical_name":{"value":"Homo sapiens", "value_ranked":"Homo sapiens"},
+		"hybrid":false, "details":[{"genus":{"value":"Homo"},
 		"specific_epithet":{"value":"sapiens"}}],"bacteria":false}]}`)
 
 	rankedCanonical := []byte(`{"namesJson":
@@ -33,7 +33,7 @@ func TestParseJson(t *testing.T) {
 		["author_word",39,45]],
 		"name_string_id":"ada76998-a975-59a8-b809-46778c876ab2",
 		"canonical_name":{"value":"Acacia bidentata pubescens",
-		"extended":"Acacia bidentata var. pubescens"},"hybrid":false,
+		"value_ranked":"Acacia bidentata var. pubescens"},"hybrid":false,
 		"details":[{"genus":{"value":"Acacia"},
 		"specific_epithet":{"value":"bidentata",
 		"authorship":{"value":"Benth.",

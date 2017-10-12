@@ -25,7 +25,7 @@ type ParsedJSON struct {
 // Canonical contains canonical names
 type Canonical struct {
 	Canonical         string `json:"value"`
-	CanonicalWithRank string `json:"extended"`
+	CanonicalWithRank string `json:"value_ranked"`
 }
 
 // PositionJSON is an array representation of Position data from JSON.
@@ -68,7 +68,9 @@ func parsedName(j ParsedJSON) util.ParsedName {
 	if j.Parsed {
 		pn.IDCanonical = util.ToUUID(j.Canonical.Canonical)
 		pn.Canonical = j.Canonical.Canonical
-		pn.CanonicalWithRank = j.Canonical.CanonicalWithRank
+		if j.Canonical.Canonical != j.Canonical.CanonicalWithRank {
+			pn.CanonicalWithRank = j.Canonical.CanonicalWithRank
+		}
 		pn.Surrogate = j.Surrogate
 		pn.Positions = positions(j.Positions)
 	}
