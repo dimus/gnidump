@@ -34,7 +34,8 @@ func main() {
 		help := `
 Usage:
   gnidump dump
-  gnidump convert
+	gnidump convert
+	gnidump create
 `
 		fmt.Println(help)
 	}
