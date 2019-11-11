@@ -63,15 +63,15 @@ func setDb() *sql.DB {
 
 func updateDataSourcesDate(db *sql.DB) {
 	var id int
-	update := `UPDATE data_sources 
+	update := `UPDATE data_sources
 							SET updated_at = (
-								SELECT updated_at 
+								SELECT updated_at
 								  FROM name_string_indices
 									  WHERE data_source_id = %d LIMIT 1
 								)
 							WHERE id = %d`
 	q := `SELECT DISTINCT id
-	        FROM data_sources ds 
+	        FROM data_sources ds
 					  JOIN name_string_indices nsi
 						  ON nsi.data_source_id = ds.id`
 	rows := runQuery(db, q)

@@ -9,27 +9,15 @@ import (
 	"strconv"
 
 	badger "github.com/dgraph-io/badger"
-	uuid "github.com/satori/go.uuid"
+	"gitlab.com/gogna/gnparser/pb"
 )
-
-// NameSpace for calculating UUID v5. This namespace is formed from a
-// DNS domain name 'globalnames.org'
-var GnNameSpace = uuid.NewV5(uuid.NamespaceDNS, "globalnames.org")
 
 // BudgerDir is a direcotry to the badger key-value store.
 const (
-	BadgerDir  = "/tmp/badger/"
-	GniDir     = "/tmp/gni_mysql/"
-	GnindexDir = "/tmp/gnindex_pg/"
+	BadgerDir  = "/opt/gnidump/badger/"
+	GniDir     = "/opt/gnidump/gni_mysql/"
+	GnindexDir = "/opt/gnidump/gnindex_pg/"
 )
-
-// Position describes semantic meaning of a word that appears between
-// the start and end positions.
-type Position struct {
-	Meaning string
-	Start   int
-	End     int
-}
 
 // ParsedName is a collection of all necessary information from the
 // scientific name parser.
@@ -41,7 +29,7 @@ type ParsedName struct {
 	Canonical         string
 	CanonicalWithRank string
 	Surrogate         bool
-	Positions         []Position
+	Positions         []*pb.Position
 }
 
 // ParsedName.EncodeGob is a method for serlializing ParsedName value.
@@ -81,14 +69,11 @@ func Check(err error) {
 
 // InitBadger finds and initializes connection to a badger key-value store.
 // If the store does not exist, InitBadger creates it.
-func InitBadger() *badger.KV {
+func InitBadger() *badger.DB {
 	log.Println("Starting key value store")
-	opts := badger.DefaultOptions
-	opts.Dir = BadgerDir
-	opts.ValueDir = BadgerDir
-	kv, err := badger.NewKV(&opts)
+	bdb, err := badger.Open(badger.DefaultOptions(BadgerDir))
 	Check(err)
-	return kv
+	return bdb
 }
 
 // EnvVars imports all environment variables relevant for the data conversion.
@@ -101,6 +86,7 @@ func EnvVars() map[string]string {
 	env["database"] = os.Getenv("DB_DATABASE")
 	env["workers"] = os.Getenv("WORKERS_NUMBER")
 	env["parser_url"] = os.Getenv("PARSER_URL")
+
 	return env
 }
 
@@ -116,10 +102,4 @@ func CleanDir(dir string) {
 		err = os.RemoveAll(filepath.Join(dir, name))
 		Check(err)
 	}
-}
-
-// ToUUID takes a string and converts it into a string representation
-// of UUID v5.
-func ToUUID(s string) string {
-	return uuid.NewV5(GnNameSpace, s).String()
 }

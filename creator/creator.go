@@ -7,7 +7,6 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/csv"
-	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -20,6 +19,7 @@ import (
 	badger "github.com/dgraph-io/badger"
 	"github.com/dimus/gnidump/converter"
 	"github.com/dimus/gnidump/util"
+	"github.com/gnames/uuid5"
 )
 
 type ioJob struct {
@@ -106,7 +106,7 @@ func saveCanonicals(canonicals map[string]map[int]struct{}) {
 		if can != "" {
 			_, err := canonicalWriter.WriteString(can + "\n")
 			util.Check(err)
-			for k, _ := range ids {
+			for k := range ids {
 				idString := strconv.Itoa(k)
 				_, err = canDataSourceWriter.WriteString(can + "\t" + idString + "\n")
 				util.Check(err)
@@ -140,7 +140,7 @@ func exportVernaculars(ioJobs chan<- ioJob) {
 		vernacularID := v[0]
 		vernacularName := v[1]
 		util.Check(err)
-		vernacularUUID := util.ToUUID(vernacularName)
+		vernacularUUID := uuid5.UUID5(vernacularName).String()
 		vernacularMap[vernacularID] = vernacularUUID
 		ioJobs <- ioJob{"vernacular", []string{vernacularUUID, vernacularName}}
 	}
@@ -163,7 +163,7 @@ func exportVernaculars(ioJobs chan<- ioJob) {
 	}
 }
 
-func exportNameStringIndices(kv *badger.KV, ioJobs chan<- ioJob,
+func exportNameStringIndices(kv *badger.DB, ioJobs chan<- ioJob,
 	canonicalJobs chan<- canJob, indexWG *sync.WaitGroup) {
 	indexJobs := make(chan [][]string)
 
@@ -176,7 +176,7 @@ func exportNameStringIndices(kv *badger.KV, ioJobs chan<- ioJob,
 }
 
 func indexWorker(workerID int, indexJobs <-chan [][]string, ioJobs chan<- ioJob,
-	canonicalJobs chan<- canJob, indexWG *sync.WaitGroup, kv *badger.KV) {
+	canonicalJobs chan<- canJob, indexWG *sync.WaitGroup, kv *badger.DB) {
 	defer indexWG.Done()
 	for {
 		job, more := <-indexJobs
@@ -190,14 +190,14 @@ func indexWorker(workerID int, indexJobs <-chan [][]string, ioJobs chan<- ioJob,
 }
 
 func exportIndexRows(job [][]string, ioJobs chan<- ioJob,
-	canonicalJobs chan<- canJob, kv *badger.KV) {
+	canonicalJobs chan<- canJob, kv *badger.DB) {
 	for _, row := range job {
 		indexRowToIO(row, ioJobs, canonicalJobs, kv)
 	}
 }
 
 func indexRowToIO(row []string, ioJobs chan<- ioJob,
-	canonicalJobs chan<- canJob, kv *badger.KV) {
+	canonicalJobs chan<- canJob, kv *badger.DB) {
 	var dataSourceID, nameStringID, url, taxonID, globalID, localID,
 		nomenclaturalCodeID, rank, acceptedTaxonID, classificationPath,
 		classificationPathIDs, classificationPathRanks, acceptedNameUUID,
@@ -230,7 +230,7 @@ func indexRowToIO(row []string, ioJobs chan<- ioJob,
 
 func assignAccepted(taxonID string, acceptedTaxonID string,
 	classificationPathIDs string, dataSourceID string,
-	kv *badger.KV) (string, string, string) {
+	kv *badger.DB) (string, string, string) {
 	var acceptedName, acceptedNameUUID string
 
 	if acceptedTaxonID == "" {
@@ -261,24 +261,26 @@ func lastPathID(PathIDs string, taxonID string) string {
 }
 
 func findAcceptedName(dataSourceID string, taxonID string,
-	kv *badger.KV) (string, string) {
-	var item badger.KVItem
+	kv *badger.DB) (string, string) {
+	txn := kv.NewTransaction(false)
+	defer txn.Commit()
 	var acceptedName, acceptedNameUUID string
 	key := indexKey(dataSourceID, taxonID)
 
-	err := kv.Get(key, &item)
-	util.Check(err)
-
-	res := item.Value()
-
-	if res == nil {
-		acceptedName, acceptedNameUUID = "", ""
-	} else {
-		parsedName, err := parsedNameFromID(string(res), kv)
-		util.Check(err)
-		acceptedName = parsedName.Name
-		acceptedNameUUID = parsedName.ID
+	item, err := txn.Get(key)
+	if err == badger.ErrKeyNotFound {
+		return "", ""
+	} else if err != nil {
+		log.Printf("*********%s*************", err)
+		return "", ""
 	}
+	var res []byte
+	res, err = item.ValueCopy(res)
+	util.Check(err)
+	parsedName, err := parsedNameFromID(string(res), kv)
+	util.Check(err)
+	acceptedName = parsedName.Name
+	acceptedNameUUID = parsedName.ID
 	return acceptedNameUUID, acceptedName
 }
 
@@ -321,7 +323,7 @@ func collectIndexJobs(indexJobs chan<- [][]string) {
 	close(indexJobs)
 }
 
-func exportNameStrings(kv *badger.KV, ioJobs chan<- ioJob,
+func exportNameStrings(kv *badger.DB, ioJobs chan<- ioJob,
 	nameStringsWG *sync.WaitGroup) {
 	nameStringsJobs := make(chan [][]string)
 
@@ -333,7 +335,7 @@ func exportNameStrings(kv *badger.KV, ioJobs chan<- ioJob,
 	go collectNameStringsJobs(nameStringsJobs)
 }
 
-func prepareIndexData(kv *badger.KV) {
+func prepareIndexData(kv *badger.DB) {
 	log.Println("Getting name_string_indices from CSV file")
 	f := converter.GniFile("name_string_indices")
 	r := csv.NewReader(f)
@@ -375,9 +377,20 @@ func indexKey(dataSourceID string, taxonID string) []byte {
 	return append(key0, []byte(taxonID)...)
 }
 
-func storeIndexData(rows [][]string, kv *badger.KV) {
+func storeIndexData(rows [][]string, kv *badger.DB) {
+	var err error
 	entries := badgerizeIndexes(rows)
-	err := kv.BatchSet(entries)
+	wb := kv.NewWriteBatch()
+	for _, v := range entries {
+		err = wb.SetEntry(v)
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
+	err = wb.Flush()
+	if err != nil {
+		log.Fatal(err)
+	}
 	util.Check(err)
 }
 
@@ -419,7 +432,7 @@ func collectNameStringsJobs(nameStringsJobs chan<- [][]string) {
 }
 
 func nameStringsWorker(workerID int, nameStringsJobs <-chan [][]string,
-	ioJobs chan<- ioJob, nameStringsWG *sync.WaitGroup, kv *badger.KV) {
+	ioJobs chan<- ioJob, nameStringsWG *sync.WaitGroup, kv *badger.DB) {
 	defer nameStringsWG.Done()
 	for {
 		job, more := <-nameStringsJobs
@@ -433,10 +446,12 @@ func nameStringsWorker(workerID int, nameStringsJobs <-chan [][]string,
 }
 
 func processNameStringsRows(job [][]string, ioJobs chan<- ioJob,
-	kv *badger.KV) {
+	kv *badger.DB) {
 	for _, row := range job {
 		pn, err := parsedNameFromID(row[0], kv)
-		util.Check(err)
+		if err != nil {
+			log.Printf("**********%s**********", err)
+		}
 		processWords(&pn, ioJobs)
 		csvRow := []string{pn.ID, pn.Name, pn.IDCanonical, pn.Canonical,
 			strconv.FormatBool(pn.Surrogate), pn.CanonicalWithRank}
@@ -445,18 +460,21 @@ func processNameStringsRows(job [][]string, ioJobs chan<- ioJob,
 }
 
 func parsedNameFromID(nameStringID string,
-	kv *badger.KV) (util.ParsedName, error) {
-	var item badger.KVItem
-	err := kv.Get([]byte(nameStringID), &item)
-	util.Check(err)
-	res := item.Value()
-	if res == nil {
-		err = errors.New("Key does not exist")
+	kv *badger.DB) (util.ParsedName, error) {
+	txn := kv.NewTransaction(false)
+	defer txn.Commit()
+	item, err := txn.Get([]byte(nameStringID))
+	if err == badger.ErrKeyNotFound {
 		return util.ParsedName{}, err
-	} else {
-		record := bytes.NewBuffer(res)
-		return util.DecodeGob(*record), nil
+	} else if err != nil {
+		log.Printf("*********%s*************", err)
+		return util.ParsedName{}, err
 	}
+	var res []byte
+	res, err = item.ValueCopy(res)
+	util.Check(err)
+	record := bytes.NewBuffer(res)
+	return util.DecodeGob(*record), nil
 }
 
 func processWords(parsedName *util.ParsedName, ioJobs chan<- ioJob) {
@@ -467,16 +485,16 @@ func processWords(parsedName *util.ParsedName, ioJobs chan<- ioJob) {
 	for _, v := range pos {
 		wordUpper := strings.ToUpper(string([]rune(name)[v.Start:v.End]))
 		word := strings.Trim(wordUpper, " ")
-		switch v.Meaning {
+		switch v.Type {
 		case "uninomial":
 			ioJobs <- ioJob{"uninomial", []string{word, id}}
 		case "genus":
 			ioJobs <- ioJob{"genus", []string{word, id}}
-		case "specific_epithet":
+		case "specificEpithet":
 			ioJobs <- ioJob{"species", []string{word, id}}
-		case "infraspecific_epithet":
+		case "infraspecificEpithet":
 			ioJobs <- ioJob{"subspecies", []string{word, id}}
-		case "author_word":
+		case "authorWord":
 			ioJobs <- ioJob{"author_word", []string{word, id}}
 		case "year":
 			yr, err := strconv.Atoi(word)

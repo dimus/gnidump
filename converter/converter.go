@@ -3,18 +3,16 @@
 package converter
 
 import (
-	"bytes"
 	"encoding/csv"
-	"io/ioutil"
 	"log"
-	"net/http"
 	"os"
 	"sync"
 
 	badger "github.com/dgraph-io/badger"
-	"github.com/dimus/gnidump/parser"
 	"github.com/dimus/gnidump/util"
-	jsoniter "github.com/json-iterator/go"
+	"github.com/gnames/uuid5"
+	"gitlab.com/gogna/gnparser"
+	"gitlab.com/gogna/gnparser/pb"
 )
 
 // Data fetches data needed for gnindex and stores it in a key-value store.
@@ -60,12 +58,13 @@ func resetKV() {
 }
 
 func parserWorker(id int, parsingJobs <-chan map[string]string,
-	wg *sync.WaitGroup, kv *badger.KV) {
+	wg *sync.WaitGroup, kv *badger.DB) {
+	gnp := gnparser.NewGNparser()
 	defer wg.Done()
 	for {
 		j, more := <-parsingJobs
 		if more {
-			parsedNames := parseNamesBatch(j)
+			parsedNames := parseNamesBatch(gnp, j)
 			storeParsedNames(&parsedNames, kv)
 		} else {
 			return
@@ -73,10 +72,20 @@ func parserWorker(id int, parsingJobs <-chan map[string]string,
 	}
 }
 
-func storeParsedNames(parsedNames *[]util.ParsedName, kv *badger.KV) {
+func storeParsedNames(parsedNames *[]util.ParsedName, kv *badger.DB) {
+	var err error
 	entries := badgerize(parsedNames)
-	err := kv.BatchSet(entries)
-	util.Check(err)
+	wb := kv.NewWriteBatch()
+	for _, v := range entries {
+		err = wb.SetEntry(v)
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
+	err = wb.Flush()
+	if err != nil {
+		log.Fatal(err)
+	}
 }
 
 func badgerize(parsedNames *[]util.ParsedName) []*badger.Entry {
@@ -94,24 +103,37 @@ func badgerize(parsedNames *[]util.ParsedName) []*badger.Entry {
 	return entries
 }
 
-func parseNamesBatch(namesMap map[string]string) []util.ParsedName {
-	namesArray := prepareArray(namesMap)
-	parsedNames := remoteParser(namesArray)
-	for i := range parsedNames {
-		p := &parsedNames[i]
-		p.IDOriginal = namesMap[p.Name]
+func parseNamesBatch(gnp gnparser.GNparser,
+	namesMap map[string]string) []util.ParsedName {
+	parsedNames := make([]util.ParsedName, len(namesMap))
+	count := 0
+	for name, id := range namesMap {
+		parsed := parseName(gnp, name, id)
+		parsedNames[count] = parsed
+		count++
 	}
 	log.Printf("Parsed '%s'\n", parsedNames[0].Canonical)
 	return parsedNames
 }
 
-func nameFromJob(job map[string]string) string {
-	var name string
-	for k := range job {
-		name = k
-		break
+func parseName(gnp gnparser.GNparser, name, origID string) util.ParsedName {
+	p := gnp.ParseToObject(name)
+	var canonical, canonicalWithRank, idCanonical string
+	if p.Canonical != nil {
+		canonical = p.Canonical.Simple
+		canonicalWithRank = p.Canonical.Full
+		idCanonical = uuid5.UUID5(p.Canonical.Simple).String()
 	}
-	return name
+	return util.ParsedName{
+		ID:                p.Id,
+		IDCanonical:       idCanonical,
+		IDOriginal:        origID,
+		Name:              name,
+		Canonical:         canonical,
+		CanonicalWithRank: canonicalWithRank,
+		Surrogate:         p.NameType == pb.NameType_SURROGATE,
+		Positions:         p.Positions,
+	}
 }
 
 func prepareJobs(parsingJobs chan<- map[string]string) {
@@ -128,31 +150,6 @@ func prepareJobs(parsingJobs chan<- map[string]string) {
 		parsingJobs <- namesMap(records[i:end])
 	}
 	close(parsingJobs)
-}
-
-func remoteParser(names []string) []util.ParsedName {
-	namesJSON, err := jsoniter.Marshal(names)
-	util.Check(err)
-	namesReader := bytes.NewReader(namesJSON)
-	env := util.EnvVars()
-	res, err := http.Post(env["parser_url"], "application/json",
-		namesReader)
-	util.Check(err)
-	body, err := ioutil.ReadAll(res.Body)
-	err = res.Body.Close()
-	util.Check(err)
-	util.Check(err)
-	return parser.ParsedNamesFromJSON(body)
-}
-
-func prepareArray(m map[string]string) []string {
-	names := make([]string, len(m))
-	i := 0
-	for n := range m {
-		names[i] = n
-		i++
-	}
-	return names
 }
 
 func namesMap(records [][]string) map[string]string {
