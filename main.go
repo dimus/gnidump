@@ -22,7 +22,7 @@ func main() {
 	dump.Prepare()
 	switch command {
 	case "version":
-		fmt.Printf(" Git commit hash: %s\n UTC Build Time: %s\n\n",
+		fmt.Printf(" Version: %s\n Build Time: %s\n\n",
 			githash, buildstamp)
 	case "dump":
 		dump.Tables()
