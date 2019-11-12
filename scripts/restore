@@ -10,8 +10,8 @@ if [[ ! ${GNINDEX_HOST:?Requires GNINDEX_HOST} \
 fi
 
 dir=$(dirname ${BASH_SOURCE[0]})
-csv_dir="/tmp/gnindex_pg/"
-gni_dir="/tmp/gni_mysql/"
+csv_dir="/opt/gnidump/gnindex_pg/"
+gni_dir="/opt/gnidump/gni_mysql/"
 
 cp ${gni_dir}data_sources.csv ${csv_dir}
 
@@ -74,4 +74,3 @@ if [[ $REPLY =~ ^[Yy]$ ]]
 then
   update_db
 fi
-

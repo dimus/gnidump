@@ -271,7 +271,7 @@ func findAcceptedName(dataSourceID string, taxonID string,
 	if err == badger.ErrKeyNotFound {
 		return "", ""
 	} else if err != nil {
-		log.Printf("*********%s*************", err)
+		log.Printf("+++++++%s+++++++", err)
 		return "", ""
 	}
 	var res []byte
@@ -450,7 +450,7 @@ func processNameStringsRows(job [][]string, ioJobs chan<- ioJob,
 	for _, row := range job {
 		pn, err := parsedNameFromID(row[0], kv)
 		if err != nil {
-			log.Printf("**********%s**********", err)
+			log.Printf("**********%s: %s**********", row[0], err)
 		}
 		processWords(&pn, ioJobs)
 		csvRow := []string{pn.ID, pn.Name, pn.IDCanonical, pn.Canonical,
@@ -467,7 +467,6 @@ func parsedNameFromID(nameStringID string,
 	if err == badger.ErrKeyNotFound {
 		return util.ParsedName{}, err
 	} else if err != nil {
-		log.Printf("*********%s*************", err)
 		return util.ParsedName{}, err
 	}
 	var res []byte
