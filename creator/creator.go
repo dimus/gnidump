@@ -494,7 +494,9 @@ func processWords(parsedName *util.ParsedName, ioJobs chan<- ioJob) {
 		case "infraspecificEpithet":
 			ioJobs <- ioJob{"subspecies", []string{word, id}}
 		case "authorWord":
-			ioJobs <- ioJob{"author_word", []string{word, id}}
+			if strings.TrimSpace(word) != "" {
+				ioJobs <- ioJob{"author_word", []string{word, id}}
+			}
 		case "year":
 			yr, err := strconv.Atoi(word)
 			if err != nil {
