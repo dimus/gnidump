@@ -4,7 +4,6 @@ package converter
 
 import (
 	"encoding/csv"
-	"fmt"
 	"log"
 	"os"
 	"strings"
@@ -125,7 +124,6 @@ func parseName(gnp gnparser.GNparser, name, origID string) util.ParsedName {
 		canonicalWithRank = p.Canonical.Full
 		idCanonical = uuid5.UUID5(p.Canonical.Simple).String()
 	}
-	fmt.Println(p.NameType)
 	return util.ParsedName{
 		ID:                p.Id,
 		IDCanonical:       idCanonical,
@@ -139,7 +137,6 @@ func parseName(gnp gnparser.GNparser, name, origID string) util.ParsedName {
 }
 
 func isSurrogate(s string) bool {
-	fmt.Println(s)
 	return strings.HasSuffix(s, "SURROGATE")
 }
 
