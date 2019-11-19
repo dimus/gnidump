@@ -4,15 +4,16 @@ package converter
 
 import (
 	"encoding/csv"
+	"fmt"
 	"log"
 	"os"
+	"strings"
 	"sync"
 
 	badger "github.com/dgraph-io/badger"
 	"github.com/dimus/gnidump/util"
 	"github.com/gnames/uuid5"
 	"gitlab.com/gogna/gnparser"
-	"gitlab.com/gogna/gnparser/pb"
 )
 
 // Data fetches data needed for gnindex and stores it in a key-value store.
@@ -124,6 +125,7 @@ func parseName(gnp gnparser.GNparser, name, origID string) util.ParsedName {
 		canonicalWithRank = p.Canonical.Full
 		idCanonical = uuid5.UUID5(p.Canonical.Simple).String()
 	}
+	fmt.Println(p.NameType)
 	return util.ParsedName{
 		ID:                p.Id,
 		IDCanonical:       idCanonical,
@@ -131,9 +133,14 @@ func parseName(gnp gnparser.GNparser, name, origID string) util.ParsedName {
 		Name:              name,
 		Canonical:         canonical,
 		CanonicalWithRank: canonicalWithRank,
-		Surrogate:         p.NameType == pb.NameType_SURROGATE,
+		Surrogate:         isSurrogate(p.NameType.String()),
 		Positions:         p.Positions,
 	}
+}
+
+func isSurrogate(s string) bool {
+	fmt.Println(s)
+	return strings.HasSuffix(s, "SURROGATE")
 }
 
 func prepareJobs(parsingJobs chan<- map[string]string) {
