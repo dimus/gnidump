@@ -273,8 +273,9 @@ func collectDataSourceRecords(rows *sql.Rows) map[int]int {
 
 func qualityMaps() (map[int]byte, map[int]byte) {
 	curatedAry := []int{1, 2, 3, 4, 5, 6, 8, 9, 105, 132, 151, 155, 158,
-		163, 165, 167, 172, 173, 174, 175, 176, 177, 181}
-	autoCuratedAry := []int{11, 170, 179}
+		163, 165, 167, 172, 173, 174, 175, 176, 177, 181, 183, 184, 185,
+		187, 188, 189, 193}
+	autoCuratedAry := []int{11, 170, 179, 186}
 
 	curated := make(map[int]byte)
 	autoCurated := make(map[int]byte)
